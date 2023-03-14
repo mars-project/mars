@@ -14,8 +14,13 @@
 
 from typing import List, Type
 
+from ..core import (
+    Optimizer,
+    OptimizationRule,
+    OperandBasedOptimizationRule,
+    OptimizationRecords,
+)
 from ....core import OperandType, TileableGraph
-from ..core import Optimizer, OptimizationRule, OptimizationRecords
 
 
 class TileableOptimizer(Optimizer):
@@ -24,10 +29,18 @@ class TileableOptimizer(Optimizer):
     """
 
 
-def register_tileable_optimization_rule(op_types: List[Type[OperandType]]):
+def register_optimization_rule():
     def wrap(rule_type: Type[OptimizationRule]):
-        TileableOptimizer.register_rule(op_types, rule_type)
-        return rule_type
+        TileableOptimizer.register_rule(rule_type)
+
+    return wrap
+
+
+def register_operand_based_optimization_rule(op_types: List[Type[OperandType]]):
+    def wrap(rule_type: Type[OperandBasedOptimizationRule]):
+        for op_type in op_types:
+            rule_type.register_operand(op_type)
+        TileableOptimizer.register_rule(rule_type)
 
     return wrap
 

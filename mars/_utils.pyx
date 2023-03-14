@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import collections
 import importlib
 import itertools
@@ -21,6 +22,7 @@ import pkgutil
 import time
 import types
 import uuid
+import warnings
 from datetime import date, datetime, timedelta, tzinfo
 from enum import Enum
 from functools import lru_cache, partial
@@ -138,7 +140,12 @@ cdef class TypeDispatcher:
     cdef _reload_lazy_handlers(self):
         for k, v in self._lazy_handlers.items():
             mod_name, obj_name = k.rsplit('.', 1)
-            mod = importlib.import_module(mod_name, __name__)
+            with warnings.catch_warnings():
+                # the lazy imported cudf will warn no device found,
+                # when we set visible device to -1 for CPU processes,
+                # ignore the warning to not distract users
+                warnings.simplefilter("ignore")
+                mod = importlib.import_module(mod_name, __name__)
             self.register(getattr(mod, obj_name), v)
         self._lazy_handlers = dict()
 

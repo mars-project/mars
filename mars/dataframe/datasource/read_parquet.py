@@ -15,8 +15,7 @@
 # limitations under the License.
 
 import os
-import pickle
-from typing import List, Tuple
+from typing import Dict
 from urllib.parse import urlparse
 
 import numpy as np
@@ -44,9 +43,8 @@ from ...serialization.serializables import (
     StringField,
     Int32Field,
     Int64Field,
-    BytesField,
 )
-from ...utils import is_object_dtype
+from ...utils import is_object_dtype, lazy_import
 from ..arrays import ArrowStringDtype
 from ..operands import OutputType
 from ..utils import (
@@ -64,6 +62,7 @@ from .core import (
 
 PARQUET_MEMORY_SCALE = 15
 STRING_FIELD_OVERHEAD = 50
+cudf = lazy_import("cudf")
 
 
 def check_engine(engine):
@@ -115,8 +114,8 @@ class ParquetEngine:
     def read_partitioned_to_pandas(
         self,
         f,
-        partitions: "pq.ParquetPartitions",
-        partition_keys: List[Tuple],
+        partitions: Dict,
+        partition_keys: Dict,
         columns=None,
         nrows=None,
         use_arrow_dtype=None,
@@ -125,11 +124,12 @@ class ParquetEngine:
         raw_df = self.read_to_pandas(
             f, columns=columns, nrows=nrows, use_arrow_dtype=use_arrow_dtype, **kwargs
         )
-        for i, (name, index) in enumerate(partition_keys):
-            dictionary = partitions[i].dictionary
-            value = dictionary[index]
-            raw_df[name] = pd.Categorical(
-                np.full(raw_df.shape[0], value.as_py()), categories=dictionary.tolist()
+        for col, value in partition_keys.items():
+            dictionary = partitions[col]
+            raw_df[col] = pd.Series(
+                value,
+                dtype=pd.CategoricalDtype(categories=dictionary.tolist()),
+                index=raw_df.index,
             )
         return raw_df
 
@@ -227,6 +227,53 @@ class FastpaquetEngine(ParquetEngine):
         return df
 
 
+class CudfEngine:
+    @classmethod
+    def read_to_cudf(cls, file, columns: list = None, nrows: int = None, **kwargs):
+        df = cudf.read_parquet(file, columns=columns, **kwargs)
+        if nrows is not None:
+            df = df.head(nrows)
+        return df
+
+    def read_group_to_cudf(
+        self, file, group_index: int, columns: list = None, nrows: int = None, **kwargs
+    ):
+        return self.read_to_cudf(
+            file, columns=columns, nrows=nrows, row_groups=group_index, **kwargs
+        )
+
+    @classmethod
+    def read_partitioned_to_cudf(
+        cls,
+        file,
+        partitions: Dict,
+        partition_keys: Dict,
+        columns=None,
+        nrows=None,
+        **kwargs,
+    ):
+        # cudf will read entire partitions even if only one partition provided,
+        # so we just read with pyarrow and convert to cudf DataFrame
+        file = pq.ParquetFile(file)
+        t = file.read(columns=columns, **kwargs)
+        t = t.slice(0, nrows) if nrows is not None else t
+        t = pa.table(t.columns, names=t.column_names)
+        raw_df = cudf.DataFrame.from_arrow(t)
+        for col, value in partition_keys.items():
+            dictionary = partitions[col].tolist()
+            codes = cudf.core.column.as_column(
+                dictionary.index(value), length=len(raw_df)
+            )
+            raw_df[col] = cudf.core.column.build_categorical_column(
+                categories=dictionary,
+                codes=codes,
+                size=codes.size,
+                offset=codes.offset,
+                ordered=False,
+            )
+        return raw_df
+
+
 class DataFrameReadParquet(
     IncrementalIndexDatasource,
     ColumnPruneSupportedDataSourceMixin,
@@ -247,8 +294,8 @@ class DataFrameReadParquet(
     merge_small_files = BoolField("merge_small_files")
     merge_small_file_options = DictField("merge_small_file_options")
     # for chunk
-    partitions = BytesField("partitions", default=None)
-    partition_keys = ListField("partition_keys", default=None)
+    partitions = DictField("partitions", default=None)
+    partition_keys = DictField("partition_keys", default=None)
     num_group_rows = Int64Field("num_group_rows", default=None)
     # as read meta may be too time-consuming when number of files is large,
     # thus we only read first file to get row number and raw file size
@@ -277,21 +324,30 @@ class DataFrameReadParquet(
         out_df = op.outputs[0]
         shape = (np.nan, out_df.shape[1])
         dtypes = cls._to_arrow_dtypes(out_df.dtypes, op)
-        dataset = pq.ParquetDataset(op.path, use_legacy_dataset=True)
+        dataset = pq.ParquetDataset(op.path, use_legacy_dataset=False)
 
         path_prefix = _parse_prefix(op.path)
 
         chunk_index = 0
         out_chunks = []
         first_chunk_row_num, first_chunk_raw_bytes = None, None
-        for i, piece in enumerate(dataset.pieces):
+        for i, fragment in enumerate(dataset.fragments):
             chunk_op = op.copy().reset_key()
-            chunk_op.path = chunk_path = path_prefix + piece.path
-            chunk_op.partitions = pickle.dumps(dataset.partitions)
-            chunk_op.partition_keys = piece.partition_keys
+            chunk_op.path = chunk_path = path_prefix + fragment.path
+            relpath = os.path.relpath(chunk_path, op.path)
+            partition_keys = dict(
+                tuple(s.split("=")) for s in relpath.split(os.sep)[:-1]
+            )
+            chunk_op.partition_keys = partition_keys
+            chunk_op.partitions = dict(
+                zip(
+                    dataset.partitioning.schema.names, dataset.partitioning.dictionaries
+                )
+            )
             if i == 0:
-                first_chunk_raw_bytes = file_size(chunk_path, op.storage_options)
-                first_chunk_row_num = piece.get_metadata().num_rows
+                first_row_group = fragment.row_groups[0]
+                first_chunk_raw_bytes = first_row_group.total_byte_size
+                first_chunk_row_num = first_row_group.num_rows
             chunk_op.first_chunk_row_num = first_chunk_row_num
             chunk_op.first_chunk_raw_bytes = first_chunk_raw_bytes
             new_chunk = chunk_op.new_chunk(
@@ -410,11 +466,10 @@ class DataFrameReadParquet(
     def _execute_partitioned(cls, ctx, op: "DataFrameReadParquet"):
         out = op.outputs[0]
         engine = get_engine(op.engine)
-        partitions = pickle.loads(op.partitions)
         with open_file(op.path, storage_options=op.storage_options) as f:
             ctx[out.key] = engine.read_partitioned_to_pandas(
                 f,
-                partitions,
+                op.partitions,
                 op.partition_keys,
                 columns=op.columns,
                 nrows=op.nrows,
@@ -423,7 +478,7 @@ class DataFrameReadParquet(
             )
 
     @classmethod
-    def execute(cls, ctx, op: "DataFrameReadParquet"):
+    def _pandas_read_parquet(cls, ctx: dict, op: "DataFrameReadParquet"):
         out = op.outputs[0]
         path = op.path
 
@@ -452,6 +507,56 @@ class DataFrameReadParquet(
                 )
 
             ctx[out.key] = df
+
+    @classmethod
+    def _cudf_read_parquet(cls, ctx: dict, op: "DataFrameReadParquet"):
+        out = op.outputs[0]
+        path = op.path
+
+        engine = CudfEngine()
+        if os.path.exists(path):
+            file = op.path
+            close = lambda: None
+        else:  # pragma: no cover
+            file = open_file(path, storage_options=op.storage_options)
+            close = file.close
+
+        try:
+            if op.partitions is not None:
+                ctx[out.key] = engine.read_partitioned_to_cudf(
+                    file,
+                    op.partitions,
+                    op.partition_keys,
+                    columns=op.columns,
+                    nrows=op.nrows,
+                    **op.read_kwargs or dict(),
+                )
+            else:
+                if op.groups_as_chunks:
+                    df = engine.read_group_to_cudf(
+                        file,
+                        op.group_index,
+                        columns=op.columns,
+                        nrows=op.nrows,
+                        **op.read_kwargs or dict(),
+                    )
+                else:
+                    df = engine.read_to_cudf(
+                        file,
+                        columns=op.columns,
+                        nrows=op.nrows,
+                        **op.read_kwargs or dict(),
+                    )
+                ctx[out.key] = df
+        finally:
+            close()
+
+    @classmethod
+    def execute(cls, ctx, op: "DataFrameReadParquet"):
+        if not op.gpu:
+            cls._pandas_read_parquet(ctx, op)
+        else:
+            cls._cudf_read_parquet(ctx, op)
 
     @classmethod
     def estimate_size(cls, ctx, op: "DataFrameReadParquet"):
@@ -496,6 +601,7 @@ def read_parquet(
     memory_scale: int = None,
     merge_small_files: bool = True,
     merge_small_file_options: dict = None,
+    gpu: bool = None,
     **kwargs,
 ):
     """
@@ -591,5 +697,6 @@ def read_parquet(
         memory_scale=memory_scale,
         merge_small_files=merge_small_files,
         merge_small_file_options=merge_small_file_options,
+        gpu=gpu,
     )
     return op(index_value=index_value, columns_value=columns_value, dtypes=dtypes)

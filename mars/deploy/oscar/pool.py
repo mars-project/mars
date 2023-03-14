@@ -81,7 +81,7 @@ async def create_worker_actor_pool(
         else:
             assert band.startswith("numa")
             num_cpus = int(resource.num_cpus)
-            envs.extend([dict() for _ in range(num_cpus)])
+            envs.extend([{"CUDA_VISIBLE_DEVICES": "-1"} for _ in range(num_cpus)])
             labels.extend([band] * num_cpus)
 
     return await mo.create_actor_pool(

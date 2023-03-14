@@ -30,7 +30,7 @@ from ....oscar.profiling import (
 from ....typing import TileableType, ChunkType
 from ....utils import Timer
 from ...subtask import SubtaskResult, Subtask
-from ..core import Task, TaskResult, TaskStatus, new_task_id
+from ..core import Task, TaskResult, TaskStatus, new_task_id, MapReduceInfo
 from ..execution.api import TaskExecutor, ExecutionChunkResult
 from .preprocessor import TaskPreprocessor
 
@@ -353,20 +353,21 @@ class TaskProcessor:
                     meta["order"] = first["order"]
 
     async def run(self):
-        profiling = ProfilingData[self.task_id, "general"]
-        self.result.status = TaskStatus.running
-        # optimization
-        with Timer() as timer:
-            # optimization, run it in executor,
-            # since optimization may be a CPU intensive operation
-            await asyncio.to_thread(self._preprocessor.optimize)
-        profiling.set("optimize", timer.duration)
-
-        self._tileable_id_to_tileable = await asyncio.to_thread(
-            self._get_tileable_id_to_tileable, self._preprocessor.tileable_graph
-        )
-
         try:
+            profiling = ProfilingData[self.task_id, "general"]
+            self.result.status = TaskStatus.running
+            # optimization
+            with Timer() as timer:
+                # optimization, run it in executor,
+                # since optimization may be a CPU intensive operation
+                await asyncio.to_thread(self._preprocessor.optimize)
+
+            profiling.set("optimize", timer.duration)
+
+            self._tileable_id_to_tileable = await asyncio.to_thread(
+                self._get_tileable_id_to_tileable, self._preprocessor.tileable_graph
+            )
+
             async with self._executor:
                 async for stage_args in self._iter_stage_chunk_graph():
                     await self._process_stage_chunk_graph(*stage_args)
@@ -413,6 +414,9 @@ class TaskProcessor:
             cost_time_secs,
             {"session_id": self._task.session_id, "task_id": self._task.task_id},
         )
+
+    def get_map_reduce_info(self, map_reduce_id: int) -> MapReduceInfo:
+        return self._preprocessor.get_map_reduce_info(map_reduce_id)
 
     def dump_subtask_graph(self):
         from .graph_visualizer import GraphVisualizer

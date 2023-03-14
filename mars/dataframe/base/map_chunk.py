@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import recursive_tile, get_output_types
+from ...core import recursive_tile, get_output_types, ENTITY_TYPE, CHUNK_TYPE
 from ...core.custom_log import redirect_custom_log
 from ...serialization.serializables import (
     KeyField,
@@ -27,7 +27,13 @@ from ...serialization.serializables import (
     StringField,
     AnyField,
 )
-from ...utils import enter_current_session, has_unknown_shape, quiet_stdio
+from ...utils import (
+    enter_current_session,
+    has_unknown_shape,
+    quiet_stdio,
+    find_objects,
+    replace_objects,
+)
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
 from ..utils import (
     build_df,
@@ -129,6 +135,12 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
+        old_inputs = find_objects(self._args, ENTITY_TYPE) + find_objects(
+            self._kwargs, ENTITY_TYPE
+        )
+        mapping = {o: n for o, n in zip(old_inputs, self._inputs[1:])}
+        self._args = replace_objects(self._args, mapping)
+        self._kwargs = replace_objects(self._kwargs, mapping)
         self._input = self._inputs[0]
 
     def _infer_attrs_by_call(self, df_or_series):
@@ -176,7 +188,9 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
         )
         shape = self._kwargs.pop("shape", None)
 
-        if dtypes is not None:
+        if output_type == OutputType.df_or_series:
+            return self.new_df_or_series([df_or_series])
+        elif dtypes is not None:
             index = index if index is not None else pd.RangeIndex(-1)
             index_value = parse_index(
                 index, df_or_series, self._func, self._args, self._kwargs
@@ -196,25 +210,21 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
                 shape = attrs["shape"]
                 dtypes = attrs["dtypes"]
             except:  # noqa: E722  # nosec
-                if df_or_series.ndim == 1 or output_type == OutputType.series:
-                    output_type = OutputType.series
-                    index = index if index is not None else pd.RangeIndex(-1)
-                    index_value = parse_index(
-                        index, df_or_series, self._func, self._args, self._kwargs
-                    )
-                    dtypes = pd.Series([np.dtype(object)])
-                    shape = (np.nan,)
-                else:
-                    raise TypeError(
-                        "Cannot determine `output_type`, "
-                        "you have to specify it as `dataframe` or `series`, "
-                        "for dataframe, `dtypes` is required as well "
-                        "if output_type='dataframe'"
-                    )
+                raise TypeError(
+                    "Cannot determine `output_type`, "
+                    "you have to specify it as `dataframe` or `series`, "
+                    "for dataframe, `dtypes` is required as well "
+                    "if output_type='dataframe'"
+                )
 
+        inputs = (
+            [df_or_series]
+            + find_objects(self.args, ENTITY_TYPE)
+            + find_objects(self.kwargs, ENTITY_TYPE)
+        )
         if output_type == OutputType.series:
             return self.new_series(
-                [df_or_series],
+                inputs,
                 dtype=dtypes.iloc[0],
                 shape=shape,
                 index_value=index_value,
@@ -224,7 +234,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
             # dataframe
             columns_value = parse_index(dtypes.index, store_data=True)
             return self.new_dataframe(
-                [df_or_series],
+                inputs,
                 shape=shape,
                 dtypes=dtypes,
                 index_value=index_value,
@@ -236,27 +246,50 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
         clean_up_func(op)
         inp = op.input
         out = op.outputs[0]
+        out_type = op.output_types[0]
 
         if inp.ndim == 2 and inp.chunk_shape[1] > 1:
             if has_unknown_shape(inp):
                 yield
             # if input is a DataFrame, make sure 1 chunk on axis columns
             inp = yield from recursive_tile(inp.rechunk({1: inp.shape[1]}))
+        arg_input_chunks = []
+        for other_inp in op.inputs[1:]:
+            other_inp = yield from recursive_tile(other_inp.rechunk(other_inp.shape))
+            arg_input_chunks.append(other_inp.chunks[0])
 
         out_chunks = []
-        nsplits = [[]] if out.ndim == 1 else [[], [out.shape[1]]]
-        pd_out_index = out.index_value.to_pandas()
+        if out_type == OutputType.dataframe:
+            nsplits = [[], [out.shape[1]]]
+            pd_out_index = out.index_value.to_pandas()
+        elif out_type == OutputType.series:
+            nsplits = [[]]
+            pd_out_index = out.index_value.to_pandas()
+        else:
+            # DataFrameOrSeries
+            nsplits = None
+            pd_out_index = None
         for chunk in inp.chunks:
             chunk_op = op.copy().reset_key()
             chunk_op.tileable_op_key = op.key
-            if op.output_types[0] == OutputType.dataframe:
+            if out_type == OutputType.df_or_series:
+                if inp.ndim == 2:
+                    collapse_axis = 1
+                else:
+                    collapse_axis = None
+                out_chunks.append(
+                    chunk_op.new_chunk(
+                        [chunk], index=chunk.index, collapse_axis=collapse_axis
+                    )
+                )
+            elif out_type == OutputType.dataframe:
                 if np.isnan(out.shape[0]):
                     shape = (np.nan, out.shape[1])
                 else:
                     shape = (chunk.shape[0], out.shape[1])
                 index_value = parse_index(pd_out_index, chunk, op.key)
                 out_chunk = chunk_op.new_chunk(
-                    [chunk],
+                    [chunk] + arg_input_chunks,
                     shape=shape,
                     dtypes=out.dtypes,
                     index_value=index_value,
@@ -272,7 +305,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
                     shape = (chunk.shape[0],)
                 index_value = parse_index(pd_out_index, chunk, op.key)
                 out_chunk = chunk_op.new_chunk(
-                    [chunk],
+                    [chunk] + arg_input_chunks,
                     shape=shape,
                     index_value=index_value,
                     name=out.name,
@@ -283,7 +316,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
                 nsplits[0].append(out_chunk.shape[0])
 
         params = out.params
-        params["nsplits"] = tuple(tuple(ns) for ns in nsplits)
+        params["nsplits"] = tuple(tuple(ns) for ns in nsplits) if nsplits else nsplits
         params["chunks"] = out_chunks
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=[params])
@@ -307,10 +340,15 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
         kwargs = op.kwargs or dict()
         if op.with_chunk_index:
             kwargs["chunk_index"] = out.index
-        ctx[out.key] = op.func(inp, *op.args, **kwargs)
+        args = op.args or tuple()
+        chunks = find_objects(args, CHUNK_TYPE) + find_objects(kwargs, CHUNK_TYPE)
+        mapping = {chunk: ctx[chunk.key] for chunk in chunks}
+        args = replace_objects(args, mapping)
+        kwargs = replace_objects(kwargs, mapping)
+        ctx[out.key] = op.func(inp, *args, **kwargs)
 
 
-def map_chunk(df_or_series, func, args=(), **kwargs):
+def map_chunk(df_or_series, func, args=(), kwargs=None, skip_infer=False, **kw):
     """
     Apply function to each chunk.
 
@@ -320,8 +358,10 @@ def map_chunk(df_or_series, func, args=(), **kwargs):
         Function to apply to each chunk.
     args : tuple
         Positional arguments to pass to func in addition to the array/series.
-    **kwargs
+    kwargs: Dict
         Additional keyword arguments to pass as keywords arguments to func.
+    skip_infer: bool, default False
+        Whether infer dtypes when dtypes or output_type is not specified.
 
     Returns
     -------
@@ -365,24 +405,28 @@ def map_chunk(df_or_series, func, args=(), **kwargs):
     1  4  2
     2  4  3
     """
-    output_type = kwargs.pop("output_type", None)
-    output_types = kwargs.pop("output_types", None)
-    object_type = kwargs.pop("object_type", None)
+    output_type = kw.pop("output_type", None)
+    output_types = kw.pop("output_types", None)
+    object_type = kw.pop("object_type", None)
     output_types = validate_output_types(
         output_type=output_type, output_types=output_types, object_type=object_type
     )
     output_type = output_types[0] if output_types else None
     if output_type:
         output_types = [output_type]
-    index = kwargs.pop("index", None)
-    dtypes = kwargs.pop("dtypes", None)
-    with_chunk_index = kwargs.pop("with_chunk_index", False)
+    elif skip_infer:
+        output_types = [OutputType.df_or_series]
+    index = kw.pop("index", None)
+    dtypes = kw.pop("dtypes", None)
+    with_chunk_index = kw.pop("with_chunk_index", False)
+    if kw:  # pragma: no cover
+        raise TypeError(f"Unknown kwargs: {kw}")
 
     op = DataFrameMapChunk(
         input=df_or_series,
         func=func,
         args=args,
-        kwargs=kwargs,
+        kwargs=kwargs or {},
         output_types=output_types,
         with_chunk_index=with_chunk_index,
     )

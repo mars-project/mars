@@ -29,7 +29,7 @@ from ....oscar.errors import ServerClosed, ActorNotExist
 from ....utils import aiotask_wrapper, _is_ci
 from ...subtask import SubtaskResult, SubtaskGraph
 from ..config import task_options
-from ..core import Task, new_task_id, TaskStatus
+from ..core import Task, new_task_id, TaskStatus, MapReduceInfo
 from ..errors import TaskNotExist
 from .preprocessor import TaskPreprocessor
 from .processor import TaskProcessor
@@ -377,3 +377,13 @@ class TaskManagerActor(mo.Actor):
                     if not is_done
                 ]
                 self._result_tileable_key_to_info[key] = not_done_info
+
+    async def get_map_reduce_info(
+        self, task_id: str, map_reduce_id: int
+    ) -> MapReduceInfo:
+        try:
+            processor_ref = self._task_id_to_processor_ref[task_id]
+        except KeyError:  # pragma: no cover
+            raise TaskNotExist(f"Task {task_id} does not exist")
+
+        return await processor_ref.get_map_reduce_info(map_reduce_id)

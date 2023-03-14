@@ -18,7 +18,7 @@ from .... import oscar as mo
 from ....core import Tileable
 from ....lib.aio import alru_cache
 from ...subtask import SubtaskResult
-from ..core import TileableGraph, TaskResult
+from ..core import TileableGraph, TaskResult, MapReduceInfo
 from ..supervisor.manager import TaskManagerActor
 from .core import AbstractTaskAPI
 
@@ -105,3 +105,8 @@ class TaskAPI(AbstractTaskAPI):
 
     async def remove_tileables(self, tileable_keys: List[str]):
         return await self._task_manager_ref.remove_tileables(tileable_keys)
+
+    async def get_map_reduce_info(
+        self, task_id: str, map_reduce_id: int
+    ) -> MapReduceInfo:
+        return await self._task_manager_ref.get_map_reduce_info(task_id, map_reduce_id)

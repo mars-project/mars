@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import functools
+import inspect
 from collections import OrderedDict
 from typing import Any, Callable, Dict, List, NamedTuple, Optional
 
@@ -716,6 +717,7 @@ class ReductionPreStep(NamedTuple):
 
 class ReductionAggStep(NamedTuple):
     input_key: str
+    raw_func_name: Optional[str]
     map_func_name: Optional[str]
     agg_func_name: Optional[str]
     custom_reduction: Optional[CustomReduction]
@@ -838,6 +840,8 @@ class ReductionCompiler:
             col_dict[key] = list(cols) if cols is not None else None
 
     def add_function(self, func, ndim, cols=None, func_name=None):
+        from .aggregation import _agg_functions
+
         cols = cols if cols is not None and self._axis == 0 else None
 
         func_name = func_name or getattr(func, "__name__", None)
@@ -847,6 +851,13 @@ class ReductionCompiler:
         if func_name == "<custom>" or func_name is None:
             func_name = f"<custom_{self._custom_counter}>"
             self._custom_counter += 1
+
+        if inspect.isbuiltin(func):
+            raw_func_name = getattr(func, "__name__", "N/A")
+            if raw_func_name in _agg_functions:
+                func = _agg_functions[raw_func_name]
+            else:
+                raise ValueError(f"Unexpected built-in function {raw_func_name}")
 
         compile_result = self._compile_function(func, func_name, ndim=ndim)
         self._compiled_funcs.append(compile_result)
@@ -976,6 +987,7 @@ class ReductionCompiler:
             agg_funcs.append(
                 ReductionAggStep(
                     agg_input_key,
+                    func_name,
                     map_func_name,
                     agg_func_name,
                     custom_reduction,

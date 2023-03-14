@@ -61,16 +61,20 @@ def test_merge():
                 assert isinstance(lchunk.op, DataFrameMergeAlign)
                 assert lchunk.op.stage == OperandStage.map
                 assert lchunk.op.index_shuffle_size == 2
-                assert lchunk.op.shuffle_on == kw.get("on", None) or kw.get(
-                    "left_on", None
-                )
+                if kw.get("on", None) or kw.get("left_on", None):
+                    # defaults to common columns
+                    assert lchunk.op.shuffle_on == kw.get("on", None) or kw.get(
+                        "left_on", None
+                    )
             for rchunk in right.inputs[0].inputs[2:]:
                 assert isinstance(rchunk.op, DataFrameMergeAlign)
                 assert rchunk.op.stage == OperandStage.map
                 assert rchunk.op.index_shuffle_size == 2
-                assert rchunk.op.shuffle_on == kw.get("on", None) or kw.get(
-                    "right_on", None
-                )
+                if kw.get("on", None) or kw.get("right_on", None):
+                    # defaults to common columns
+                    assert rchunk.op.shuffle_on == kw.get("on", None) or kw.get(
+                        "right_on", None
+                    )
             pd.testing.assert_index_equal(
                 chunk.columns_value.to_pandas(), df.columns_value.to_pandas()
             )

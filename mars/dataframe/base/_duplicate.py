@@ -160,7 +160,7 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
                 if out_chunk_size > 1 and method == "tree":
                     # for tree, chunks except last one should be dataframes,
                     chunk_op._output_types = (
-                        [OutputType.dataframe]
+                        concat_chunk.op.output_types
                         if out_chunk_size > 1
                         else out.op.output_types
                     )
@@ -238,6 +238,7 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             reduce_op._output_types = op.output_types
             reduce_chunk_params = map_chunks[0].params
             reduce_chunk_params["index"] = (i,) + reduce_chunk_params["index"][1:]
+            reduce_chunk_params["is_mapper"] = True
             reduce_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], kws=[reduce_chunk_params])
             )

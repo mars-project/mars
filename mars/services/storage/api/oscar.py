@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import sys
-from typing import Any, List, Type, TypeVar
+from typing import Any, List, Tuple, Type, TypeVar, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
@@ -82,6 +82,12 @@ class StorageAPI(AbstractStorageAPI):
         api = StorageAPI(address, session_id, band_name)
         await api._init()
         return api
+
+    async def is_seekable(self, storage_level: StorageLevel = None) -> bool:
+        """
+        If storage backend is seekable.
+        """
+        return await self._storage_handler_ref.is_seekable(storage_level)
 
     @mo.extensible
     async def get(
@@ -163,7 +169,7 @@ class StorageAPI(AbstractStorageAPI):
     @mo.extensible
     async def fetch(
         self,
-        data_key: str,
+        data_key: Union[str, Tuple],
         level: StorageLevel = None,
         band_name: str = None,
         remote_address: str = None,
@@ -174,8 +180,9 @@ class StorageAPI(AbstractStorageAPI):
 
         Parameters
         ----------
-        data_key: str
-            data key to fetch to current worker with specific level
+        data_key: str or tuple
+            data key(tuple when is shuffle key) to fetch to current worker
+            with specific level.
         level: StorageLevel
             the storage level to put into, MEMORY as default
         band_name: BandType
@@ -185,11 +192,9 @@ class StorageAPI(AbstractStorageAPI):
         error: str
             raise or ignore
         """
-        fetch_key = await self._storage_handler_ref.fetch_batch(
+        await self._storage_handler_ref.fetch_batch(
             self._session_id, [data_key], level, band_name, remote_address, error
         )
-        if fetch_key:
-            return fetch_key[0]
 
     @fetch.batch
     async def batch_fetch(self, args_list, kwargs_list):
@@ -203,7 +208,7 @@ class StorageAPI(AbstractStorageAPI):
                 assert extracted_args == (level, band_name, dest_address, error)
             extracted_args = (level, band_name, dest_address, error)
             data_keys.append(data_key)
-        return await self._storage_handler_ref.fetch_batch(
+        await self._storage_handler_ref.fetch_batch(
             self._session_id, data_keys, *extracted_args
         )
 
@@ -247,14 +252,14 @@ class StorageAPI(AbstractStorageAPI):
         return await self._storage_handler_ref.open_reader(self._session_id, data_key)
 
     async def open_writer(
-        self, data_key: str, size: int, level: StorageLevel
+        self, data_key: Union[Tuple, str], size: int, level: StorageLevel = None
     ) -> WrappedStorageFileObject:
         """
         Return a file-like object for writing data.
 
         Parameters
         ----------
-        data_key: str
+        data_key: str or tuple
             data key
         size: int
             the total size of data

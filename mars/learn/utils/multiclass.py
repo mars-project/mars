@@ -17,7 +17,7 @@ from collections.abc import Sequence
 from typing import List
 
 import numpy as np
-from scipy.sparse.base import spmatrix
+from scipy.sparse import spmatrix
 from sklearn.utils.multiclass import (
     is_multilabel as sklearn_is_multilabel,
     type_of_target as sklearn_type_of_target,

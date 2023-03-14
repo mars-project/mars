@@ -14,5 +14,5 @@
 
 from .api import AbstractTaskAPI, TaskAPI, WebTaskAPI
 from .config import task_options
-from .core import Task, TaskStatus, TaskResult, new_task_id
+from .core import Task, TaskStatus, TaskResult, new_task_id, MapReduceInfo
 from .errors import TaskNotExist

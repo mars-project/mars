@@ -373,10 +373,22 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
         else:
             on = None
 
-        if isinstance(df, tuple):
-            filters = hash_dataframe_on(df[0], on, op.shuffle_size, level=op.level)
-        else:
-            filters = hash_dataframe_on(df, on, op.shuffle_size, level=op.level)
+        # Get the filter rule corresponding to each df.
+        dfs = df if isinstance(df, tuple) else (df,)
+        counter = itertools.count()
+        df_filters = []
+        idx_to_index_and_filters = dict()
+        for item in dfs:
+            is_new = True
+            for _, (index, filters) in idx_to_index_and_filters.items():
+                if item.index.equals(index):
+                    df_filters.append(filters)
+                    is_new = False
+                    break
+            if is_new:
+                filters = hash_dataframe_on(item, on, op.shuffle_size, level=op.level)
+                idx_to_index_and_filters[next(counter)] = (item.index, filters)
+                df_filters.append(filters)
 
         def _take_index(src, f):
             result = src.iloc[f]
@@ -388,44 +400,38 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
                 result = result.copy()
             return result
 
-        for index_idx, index_filter in enumerate(filters):
+        for index_idx in range(len(df_filters[0])):
             if is_dataframe_obj:
                 reducer_index = (index_idx, chunk.index[1])
             else:
                 reducer_index = (index_idx,)
-
+            filtered = []
+            filtered_by = []
+            for d, filters in zip(dfs, df_filters):
+                index_filter = filters[index_idx]
+                if deliver_by:
+                    for v in by:
+                        if isinstance(v, pd.Series):
+                            filtered_by.append(_take_index(v, index_filter))
+                        else:
+                            filtered_by.append(v)
+                filtered.append(_take_index(d, index_filter))
             if deliver_by:
-                filtered_by = []
-                for v in by:
-                    if isinstance(v, pd.Series):
-                        filtered_by.append(_take_index(v, index_filter))
-                    else:
-                        filtered_by.append(v)
-                if isinstance(df, tuple):
-                    ctx[
-                        chunk.key, reducer_index
-                    ] = ctx.get_current_chunk().index, tuple(
-                        _take_index(x, index_filter) for x in df
-                    ) + (
-                        filtered_by,
-                        deliver_by,
-                    )
-                else:
-                    ctx[chunk.key, reducer_index] = ctx.get_current_chunk().index, (
-                        _take_index(df, index_filter),
-                        filtered_by,
-                        deliver_by,
-                    )
+                ctx[chunk.key, reducer_index] = ctx.get_current_chunk().index, (
+                    *filtered,
+                    filtered_by,
+                    deliver_by,
+                )
             else:
                 if isinstance(df, tuple):
                     ctx[chunk.key, reducer_index] = (
                         ctx.get_current_chunk().index,
-                        tuple(_take_index(x, index_filter) for x in df) + (deliver_by,),
+                        tuple(filtered) + (deliver_by,),
                     )
                 else:
                     ctx[chunk.key, reducer_index] = (
                         ctx.get_current_chunk().index,
-                        _take_index(df, index_filter),
+                        filtered[0],
                     )
 
     @classmethod

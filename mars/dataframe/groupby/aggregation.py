@@ -16,7 +16,7 @@ import functools
 import itertools
 import logging
 import uuid
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Union
 
 import numpy as np
 import pandas as pd
@@ -53,8 +53,14 @@ from ..reduction.core import (
     ReductionAggStep,
 )
 from ..reduction.aggregation import is_funcs_aggregate, normalize_reduction_funcs
-from ..utils import parse_index, build_concatenated_rows_frame, is_cudf
+from ..utils import (
+    parse_index,
+    build_concatenated_rows_frame,
+    is_cudf,
+    concat_on_columns,
+)
 from .core import DataFrameGroupByOperand
+from .custom_aggregation import custom_agg_functions
 from .sort import (
     DataFramePSRSGroupbySample,
     DataFrameGroupbyConcatPivot,
@@ -100,6 +106,7 @@ _agg_functions = {
     "skew": lambda x, bias=False: x.skew(bias=bias),
     "kurt": lambda x, bias=False: x.kurt(bias=bias),
     "kurtosis": lambda x, bias=False: x.kurtosis(bias=bias),
+    "nunique": lambda x: x.nunique(),
 }
 _series_col_name = "col_name"
 
@@ -162,6 +169,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     func = AnyField("func")
     func_rename = ListField("func_rename")
 
+    raw_groupby_params = DictField("raw_groupby_params")
     groupby_params = DictField("groupby_params")
 
     method = StringField("method")
@@ -227,7 +235,14 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         )
 
         shape = (np.nan, agg_df.shape[1])
-        index_value = parse_index(agg_df.index, groupby.key, groupby.index_value.key)
+        if isinstance(agg_df.index, pd.RangeIndex):
+            index_value = parse_index(
+                pd.RangeIndex(-1), groupby.key, groupby.index_value.key
+            )
+        else:
+            index_value = parse_index(
+                agg_df.index, groupby.key, groupby.index_value.key
+            )
 
         # make sure if as_index=False takes effect
         self._fix_as_index(agg_df.index)
@@ -983,56 +998,15 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return out_dict
 
     @staticmethod
-    def _do_custom_agg(op, custom_reduction, *input_objs):
-        xdf = cudf if op.gpu else pd
-        results = []
-        out = op.outputs[0]
-        for group_key in input_objs[0].groups.keys():
-            group_objs = [o.get_group(group_key) for o in input_objs]
-            agg_done = False
-            if op.stage == OperandStage.map:
-                result = custom_reduction.pre(group_objs[0])
-                agg_done = custom_reduction.pre_with_agg
-                if not isinstance(result, tuple):
-                    result = (result,)
-            else:
-                result = group_objs
-
-            if not agg_done:
-                result = custom_reduction.agg(*result)
-                if not isinstance(result, tuple):
-                    result = (result,)
-
-            if op.stage == OperandStage.agg:
-                result = custom_reduction.post(*result)
-                if not isinstance(result, tuple):
-                    result = (result,)
-
-            if out.ndim == 2:
-                result = tuple(r.to_frame().T for r in result)
-                if op.stage == OperandStage.agg:
-                    result = tuple(r.astype(out.dtypes) for r in result)
-            else:
-                result = tuple(xdf.Series(r) for r in result)
-
-            for r in result:
-                if len(input_objs[0].grouper.names) == 1:
-                    r.index = xdf.Index(
-                        [group_key], name=input_objs[0].grouper.names[0]
-                    )
-                else:
-                    r.index = xdf.MultiIndex.from_tuples(
-                        [group_key], names=input_objs[0].grouper.names
-                    )
-            results.append(result)
-        if not results and op.stage == OperandStage.agg:
-            empty_df = pd.DataFrame(
-                [], columns=out.dtypes.index, index=out.index_value.to_pandas()[:0]
-            )
-            concat_result = (empty_df.astype(out.dtypes),)
-        else:
-            concat_result = tuple(xdf.concat(parts) for parts in zip(*results))
-        return concat_result
+    def _do_custom_agg(
+        func_name: str, op: "DataFrameGroupByAgg", in_data: pd.DataFrame
+    ) -> Union[pd.Series, pd.DataFrame]:
+        if op.stage == OperandStage.map:
+            return custom_agg_functions[func_name].execute_map(op, in_data)
+        elif op.stage == OperandStage.combine:
+            return custom_agg_functions[func_name].execute_combine(op, in_data)
+        else:  # must be OperandStage.agg, since OperandStage.reduce has been excluded in the execute function.
+            return custom_agg_functions[func_name].execute_agg(op, in_data)
 
     @staticmethod
     def _do_predefined_agg(input_obj, agg_func, single_func=False, **kwds):
@@ -1085,7 +1059,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
         for input_key, output_key, cols, func in op.pre_funcs:
             if input_key == output_key:
-                if cols is None or grouped._selection is not None:
+                if cols is None or getattr(grouped, "_selection", None) is not None:
                     ret_map_groupbys[output_key] = grouped
                 else:
                     ret_map_groupbys[output_key] = grouped[cols]
@@ -1124,16 +1098,17 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         agg_dfs = []
         for (
             input_key,
+            raw_func_name,
             map_func_name,
             _agg_func_name,
-            custom_reduction,
+            _custom_reduction,
             _output_key,
             _output_limit,
             kwds,
         ) in op.agg_funcs:
             input_obj = ret_map_groupbys[input_key]
             if map_func_name == "custom_reduction":
-                agg_dfs.extend(cls._do_custom_agg(op, custom_reduction, input_obj))
+                agg_dfs.append(cls._do_custom_agg(raw_func_name, op, in_data))
             else:
                 single_func = map_func_name == op.raw_func
                 agg_dfs.append(
@@ -1145,7 +1120,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         if getattr(op, "size_recorder_name", None) is not None:
             # record_size
             raw_size = estimate_pandas_size(in_data)
-            agg_size = estimate_pandas_size(agg_dfs[0])
+            # when agg by a list of methods, agg_size should be sum
+            agg_size = sum([estimate_pandas_size(item) for item in agg_dfs])
             size_recorder = ctx.get_remote_object(op.size_recorder_name)
             size_recorder.record(raw_size, agg_size)
 
@@ -1168,18 +1144,19 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         in_data_dict = cls._pack_inputs(op.agg_funcs, in_data_tuple)
 
         combines = []
-        for (
+        for raw_input, (
             _input_key,
+            raw_func_name,
             _map_func_name,
             agg_func_name,
             custom_reduction,
             output_key,
             _output_limit,
             kwds,
-        ) in op.agg_funcs:
+        ) in zip(ctx[op.inputs[0].key], op.agg_funcs):
             input_obj = in_data_dict[output_key]
             if agg_func_name == "custom_reduction":
-                combines.extend(cls._do_custom_agg(op, custom_reduction, *input_obj))
+                combines.append(cls._do_custom_agg(raw_func_name, op, raw_input))
             else:
                 combines.append(
                     cls._do_predefined_agg(input_obj, agg_func_name, **kwds)
@@ -1210,6 +1187,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
         for (
             _input_key,
+            raw_func_name,
             _map_func_name,
             agg_func_name,
             custom_reduction,
@@ -1218,12 +1196,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             kwds,
         ) in op.agg_funcs:
             if agg_func_name == "custom_reduction":
-                input_obj = tuple(
-                    cls._get_grouped(op, o, ctx) for o in in_data_dict[output_key]
-                )
                 in_data_dict[output_key] = cls._do_custom_agg(
-                    op, custom_reduction, *input_obj
-                )[0]
+                    raw_func_name, op, in_data_dict[output_key]
+                )
             else:
                 input_obj = cls._get_grouped(op, in_data_dict[output_key], ctx)
                 in_data_dict[output_key] = cls._do_predefined_agg(
@@ -1232,21 +1207,24 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
         aggs = []
         for input_keys, _output_key, func_name, cols, func in op.post_funcs:
-            if cols is None:
-                func_inputs = [in_data_dict[k] for k in input_keys]
+            if func_name in custom_agg_functions:
+                agg_df = in_data_dict[_output_key]
             else:
-                func_inputs = [in_data_dict[k][cols] for k in input_keys]
+                if cols is None:
+                    func_inputs = [in_data_dict[k] for k in input_keys]
+                else:
+                    func_inputs = [in_data_dict[k][cols] for k in input_keys]
 
-            if (
-                func_inputs[0].ndim == 2
-                and len(set(inp.shape[1] for inp in func_inputs)) > 1
-            ):
-                common_cols = func_inputs[0].columns
-                for inp in func_inputs[1:]:
-                    common_cols = common_cols.join(inp.columns, how="inner")
-                func_inputs = [inp[common_cols] for inp in func_inputs]
+                if (
+                    func_inputs[0].ndim == 2
+                    and len(set(inp.shape[1] for inp in func_inputs)) > 1
+                ):
+                    common_cols = func_inputs[0].columns
+                    for inp in func_inputs[1:]:
+                        common_cols = common_cols.join(inp.columns, how="inner")
+                    func_inputs = [inp[common_cols] for inp in func_inputs]
 
-            agg_df = func(*func_inputs, gpu=op.is_gpu())
+                agg_df = func(*func_inputs, gpu=op.is_gpu())
             if isinstance(agg_df, np.ndarray):
                 agg_df = xdf.DataFrame(agg_df, index=func_inputs[0].index)
 
@@ -1266,7 +1244,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         aggs = [item[0] for item in aggs]
 
         if out_chunk.ndim == 2:
-            result = xdf.concat(aggs, axis=1)
+            result = concat_on_columns(aggs)
             if (
                 not op.groupby_params.get("as_index", True)
                 and col_value.nlevels == result.columns.nlevels
@@ -1332,6 +1310,7 @@ def agg(groupby, func=None, method="auto", combine_size=None, *args, **kwargs):
 
     # When perform a computation on the grouped data, we won't shuffle
     # the data in the stage of groupby and do shuffle after aggregation.
+
     if not isinstance(groupby, GROUPBY_TYPE):
         raise TypeError(f"Input should be type of groupby, not {type(groupby)}")
 
@@ -1361,10 +1340,12 @@ def agg(groupby, func=None, method="auto", combine_size=None, *args, **kwargs):
         )
 
     use_inf_as_na = kwargs.pop("_use_inf_as_na", options.dataframe.mode.use_inf_as_na)
+
     agg_op = DataFrameGroupByAgg(
         raw_func=func,
         raw_func_kw=kwargs,
         method=method,
+        raw_groupby_params=groupby.op.groupby_params,
         groupby_params=groupby.op.groupby_params,
         combine_size=combine_size or options.combine_size,
         chunk_store_limit=options.chunk_store_limit,

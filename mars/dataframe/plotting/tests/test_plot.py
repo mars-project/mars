@@ -104,3 +104,14 @@ def test_plot(setup):
     _check_plot_works(df.plot, x="a", y="b")
     _check_plot_works(df.plot, x="a", y=mt.tensor("b"))
     _check_plot_works(df.plot.line)
+
+    raw = pd.DataFrame(
+        {
+            "A": ["foo", "bar", "foo", "bar", "foo", "bar", "foo", "foo"],
+            "B": ["one", "one", "two", "three", "two", "two", "one", "three"],
+            "C": np.random.randn(8),
+            "D": np.random.randn(8),
+        }
+    )
+    df = md.DataFrame(raw, chunk_size=3)
+    _check_plot_works(df.groupby("A").plot)

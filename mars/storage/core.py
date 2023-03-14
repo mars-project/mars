@@ -17,7 +17,7 @@
 import asyncio
 import os
 from abc import ABC, abstractmethod
-from concurrent.futures import Executor, ThreadPoolExecutor
+from concurrent.futures import Executor
 from typing import Any, Optional, Union
 
 from ..lib.aio import AioFileObject
@@ -32,8 +32,6 @@ class StorageFileObject(AioFileObject):
         executor: Executor = None,
     ):
         self._object_id = object_id
-        if executor is None:
-            executor = ThreadPoolExecutor()
         super().__init__(file, loop=loop, executor=executor)
 
     @property
@@ -124,7 +122,10 @@ class BufferWrappedFileObject(ABC):
             assert whence == os.SEEK_SET
             new_offset = offset
         if new_offset < 0 or new_offset >= self._size:
-            raise ValueError(f"File offset should be limited to (0, {self._size})")
+            raise ValueError(
+                f"File offset should be limited to (0, {self._size}), "
+                f"now is {new_offset}"
+            )
         self._offset = new_offset
         return self._offset
 

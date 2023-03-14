@@ -29,6 +29,7 @@ class OutputType(Enum):
     categorical = 7
     dataframe_groupby = 8
     series_groupby = 9
+    df_or_series = 10
 
     @classmethod
     def serialize_list(cls, output_types):

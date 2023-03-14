@@ -28,8 +28,6 @@ import numbers
 import operator
 import os
 import weakref
-
-import cloudpickle as pickle
 import pkgutil
 import random
 import socket
@@ -59,6 +57,7 @@ from typing import (
 from types import TracebackType
 from urllib.parse import urlparse
 
+import cloudpickle as pickle
 import numpy as np
 import pandas as pd
 
@@ -476,6 +475,18 @@ def register_ray_serializer(obj_type, serializer=None, deserializer=None):
         pass
 
 
+cudf = lazy_import("cudf")
+
+
+def _get_dtype_itemsize(dt: Union[np.dtype, pd.api.extensions.ExtensionDtype]) -> int:
+    try:
+        return dt.itemsize
+    except AttributeError:
+        if cudf and isinstance(dt, cudf.CategoricalDtype):
+            return dt.to_pandas().itemsize
+        raise
+
+
 def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
     from .dataframe.core import IndexValue
 
@@ -495,7 +506,7 @@ def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
     if hasattr(dt, "shape") and len(dt.shape) == 0:
         return 0
     if hasattr(dt, "dtypes") and shape is not None:
-        size = shape[0] * sum(dtype.itemsize for dtype in dt.dtypes)
+        size = shape[0] * sum(_get_dtype_itemsize(dtype) for dtype in dt.dtypes)
         try:
             index_value_value = dt.index_value.value
             if hasattr(index_value_value, "dtype") and not isinstance(
@@ -679,7 +690,13 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
     """
     from sklearn.base import BaseEstimator
 
-    from .dataframe.utils import is_dataframe, is_index, is_series, get_xdf
+    from .dataframe.utils import (
+        is_dataframe,
+        is_index,
+        is_series,
+        get_xdf,
+        concat_on_columns,
+    )
     from .lib.groupby_wrapper import GroupByWrapper
     from .tensor.array_utils import get_array_module, is_array
 
@@ -706,8 +723,8 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
         xdf = get_xdf(v)
         concats = []
         for _, cs in itertools.groupby(chunk_results, key=lambda t: t[0][0]):
-            concats.append(xdf.concat([c[1] for c in cs], axis="columns"))
-        return xdf.concat(concats, axis="index")
+            concats.append(concat_on_columns([c[1] for c in cs]))
+        return xdf.concat(concats, axis=0)
     elif is_series(v):
         xdf = get_xdf(v)
         return xdf.concat([c[1] for c in chunk_results])

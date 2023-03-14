@@ -22,8 +22,9 @@ from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE
 from ...serialization.serializables import KeyField, AnyField
 from ...tensor.core import TENSOR_TYPE
-from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
+from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, OutputType
 from ..operands import DataFrameOperand, DataFrameOperandMixin
+from .drop_duplicates import DataFrameDropDuplicates
 
 
 class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
@@ -79,9 +80,10 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_entity_values(cls, op):
+        from ...core.context import get_context
+        from ...tensor.base.unique import TensorUnique
         from ..utils import auto_merge_chunks
         from ..arithmetic.bitwise_or import tree_dataframe_or
-        from ...core.context import get_context
 
         in_elements = op.input
         out_elements = op.outputs[0]
@@ -90,15 +92,79 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
         in_chunks = in_elements.chunks
         if any(len(t.chunks) > 4 for t in op.inputs):
             # yield and merge value chunks to reduce graph nodes
-            yield list(
-                itertools.chain.from_iterable(
-                    t.chunks for t in op.inputs if isinstance(t, ENTITY_TYPE)
-                )
-            )
+            yield_chunks = [c for c in in_chunks]
+            unique_values = []
+            for value in op.inputs[1:]:
+                if len(value.chunks) >= len(in_chunks) * 2:
+                    # when value chunks is much more than in_chunks,
+                    # we call drop_duplicates to reduce the amount of data.
+                    if isinstance(value, TENSOR_TYPE):
+                        chunks = [
+                            TensorUnique(
+                                return_index=False,
+                                return_inverse=False,
+                                return_counts=False,
+                            ).new_chunk(
+                                [c], index=c.index, shape=(np.nan,), dtype=c.dtype
+                            )
+                            for c in value.chunks
+                        ]
+                        unique_values.append(
+                            TensorUnique(
+                                return_index=False,
+                                return_inverse=False,
+                                return_counts=False,
+                            ).new_tensor(
+                                [value],
+                                chunks=chunks,
+                                nsplits=((np.nan,) * len(chunks),),
+                                shape=(np.nan,),
+                                dtype=value.dtype,
+                            )
+                        )
+                        yield_chunks += chunks
+                    else:
+                        # is series
+                        chunks = [
+                            DataFrameDropDuplicates(
+                                keep="first",
+                                ignore_index=False,
+                                method="tree",
+                                output_types=[OutputType.series],
+                            ).new_chunk(
+                                [c],
+                                index=c.index,
+                                index_value=c.index_value,
+                                name=c.name,
+                                dtype=c.dtype,
+                                shape=(np.nan,),
+                            )
+                            for c in value.chunks
+                        ]
+                        unique_values.append(
+                            DataFrameDropDuplicates(
+                                keep="first",
+                                ignore_index=False,
+                                method="tree",
+                                output_types=[OutputType.series],
+                            ).new_series(
+                                [value],
+                                chunks=chunks,
+                                nsplits=((np.nan,) * len(chunks),),
+                                index_value=value.index_value,
+                                dtype=value.dtype,
+                                shape=(np.nan,),
+                            )
+                        )
+                        yield_chunks += chunks
+                else:
+                    yield_chunks += value.chunks
+                    unique_values.append(value)
+            yield yield_chunks
             in_elements = auto_merge_chunks(get_context(), op.input)
             in_chunks = in_elements.chunks
-            for value in op.inputs[1:]:
-                if isinstance(value, DATAFRAME_TYPE + SERIES_TYPE):
+            for value in unique_values:
+                if isinstance(value, SERIES_TYPE):
                     merged = auto_merge_chunks(get_context(), value)
                     chunks_list.append(merged.chunks)
                 elif isinstance(value, ENTITY_TYPE):

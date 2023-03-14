@@ -78,6 +78,7 @@ _agg_functions = {
     "skew": lambda x, skipna=True, bias=False: x.skew(skipna=skipna, bias=bias),
     "kurt": lambda x, skipna=True, bias=False: x.kurt(skipna=skipna, bias=bias),
     "kurtosis": lambda x, skipna=True, bias=False: x.kurtosis(skipna=skipna, bias=bias),
+    "nunique": lambda x: x.nunique(),
 }
 
 
@@ -682,15 +683,19 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             return getattr(input_obj, func_name)(**kwds)
 
     @classmethod
-    def _execute_map(cls, ctx, op: "DataFrameAggregate"):
-        in_data = ctx[op.inputs[0].key]
-        axis_index = op.outputs[0].index[op.axis]
-
+    def _select_dtypes(cls, in_data, op: "DataFrameAggregate"):
         if in_data.ndim == 2:
             if op.numeric_only:
                 in_data = in_data.select_dtypes([np.number, np.bool_])
             elif op.bool_only:
                 in_data = in_data.select_dtypes([np.bool_])
+        return in_data
+
+    @classmethod
+    def _execute_map(cls, ctx, op: "DataFrameAggregate"):
+        in_data = ctx[op.inputs[0].key]
+        axis_index = op.outputs[0].index[op.axis]
+        in_data = cls._select_dtypes(in_data, op)
 
         # map according to map groups
         ret_map_dfs = dict()
@@ -708,6 +713,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         agg_dfs = []
         for (
             input_key,
+            _,
             map_func_name,
             _agg_func_name,
             custom_reduction,
@@ -752,6 +758,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         combines = []
         for (
             _input_key,
+            _,
             _map_func_name,
             agg_func_name,
             custom_reduction,
@@ -790,6 +797,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         # perform agg
         for (
             _input_key,
+            _,
             _map_func_name,
             agg_func_name,
             custom_reduction,
@@ -877,6 +885,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 xp = cp if op.gpu else np
                 in_obj = op.inputs[0]
                 in_data = ctx[in_obj.key]
+                in_data = cls._select_dtypes(in_data, op)
                 if isinstance(in_obj, INDEX_CHUNK_TYPE):
                     result = op.func[0](in_data)
                 elif (

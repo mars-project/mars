@@ -60,7 +60,7 @@ class AioSerializer:
 
         # add buffer lengths into headers
         headers[0][BUFFER_SIZES_NAME] = [
-            getattr(buf, "nbytes", len(buf)) for buf in buffers
+            buf.nbytes if hasattr(buf, "nbytes") else len(buf) for buf in buffers
         ]
         header = cloudpickle.dumps(headers)
 

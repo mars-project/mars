@@ -241,6 +241,10 @@ def test_dataframe_reduction(
     pd.testing.assert_series_equal(
         compute(data, axis="index", numeric_only=True), r.execute().fetch()
     )
+    r = compute(md.DataFrame(data), axis="index", numeric_only=True)
+    pd.testing.assert_series_equal(
+        compute(data, axis="index", numeric_only=True), r.execute().fetch()
+    )
 
     data1 = pd.DataFrame(rs.rand(10, 10), columns=[str(i) for i in range(10)])
     data2 = pd.DataFrame(rs.rand(10, 10), columns=[str(i) for i in range(10)])
@@ -459,6 +463,9 @@ def test_dataframe_bool_reduction(setup, check_ref_counts, func_name):
 
     r = compute(md.DataFrame(data, chunk_size=3), axis=1)
     pd.testing.assert_series_equal(compute(data, axis=1), r.execute().fetch())
+
+    r = compute(md.DataFrame(data, chunk_size=3), axis=None)
+    assert compute(data, axis=None) == r.execute().fetch()
 
     # test null
     np_data = rs.rand(20, 10)
@@ -711,7 +718,7 @@ def test_unique(setup, check_ref_counts):
     np.testing.assert_array_equal(result, expected)
 
     data2 = pd.Series(
-        [pd.Timestamp("20200101")] * 5
+        [pd.Timestamp("20200101", tz="US/Eastern")] * 5
         + [pd.Timestamp("20200202")]
         + [pd.Timestamp("20020101")] * 9
     )
@@ -723,6 +730,21 @@ def test_unique(setup, check_ref_counts):
     series = md.Series(data2, chunk_size=6)
     result = series.unique().execute().fetch()
     expected = data2.unique()
+    np.testing.assert_array_equal(result, expected)
+
+    # test md.unique
+    result = md.unique(data2).execute().fetch()
+    expected = pd.unique(data2)
+    np.testing.assert_array_equal(result, expected)
+
+    raw_list = list("baabc")
+    result = md.unique(raw_list).execute().fetch()
+    expected = pd.unique(raw_list)
+    np.testing.assert_array_equal(result, expected)
+
+    data1 = pd.Series(np.random.randint(0, 5, size=(20,)))
+    result = md.unique(data1).execute().fetch()
+    expected = pd.unique(data1)
     np.testing.assert_array_equal(result, expected)
 
 
@@ -880,6 +902,9 @@ def test_dataframe_aggregate(setup, check_ref_counts):
     result = df.agg(["sum"])
     pd.testing.assert_frame_equal(result.execute().fetch(), data.agg(["sum"]))
 
+    result = df.agg([sum])
+    pd.testing.assert_frame_equal(result.execute().fetch(), data.agg([sum]))
+
     result = df.agg(all_aggs)
     pd.testing.assert_frame_equal(result.execute().fetch(), data.agg(all_aggs))
 
@@ -890,6 +915,12 @@ def test_dataframe_aggregate(setup, check_ref_counts):
     pd.testing.assert_frame_equal(
         result.execute().fetch(),
         data.agg({0: ["sum", "min", "var"], 9: ["mean", "var", "std"]}),
+    )
+
+    result = df.agg({0: [sum, min, max]})
+    pd.testing.assert_frame_equal(
+        result.execute().fetch(),
+        data.agg({0: [sum, min, max]}),
     )
 
     if _support_kw_agg:
@@ -939,6 +970,11 @@ def test_series_aggregate(setup, check_ref_counts):
     result = series.agg({"col_sum": "sum", "col_count": "count"})
     pd.testing.assert_series_equal(
         result.execute().fetch(), data.agg({"col_sum": "sum", "col_count": "count"})
+    )
+
+    result = series.agg({"col_sum": sum, "col_count": "count"})
+    pd.testing.assert_series_equal(
+        result.execute().fetch(), data.agg({"col_sum": sum, "col_count": "count"})
     )
 
     if _support_kw_agg:

@@ -25,55 +25,71 @@ import mars.dataframe as md
 queries: Optional[Union[Set[str], List[str]]] = None
 
 
-def load_lineitem(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
+def load_lineitem(
+    data_folder: str, use_arrow_dtype: bool = None, gpu: bool = False
+) -> md.DataFrame:
     data_path = data_folder + "/lineitem.pq"
-    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
     df["L_SHIPDATE"] = md.to_datetime(df.L_SHIPDATE, format="%Y-%m-%d")
     df["L_RECEIPTDATE"] = md.to_datetime(df.L_RECEIPTDATE, format="%Y-%m-%d")
     df["L_COMMITDATE"] = md.to_datetime(df.L_COMMITDATE, format="%Y-%m-%d")
     return df
 
 
-def load_part(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
+def load_part(
+    data_folder: str, use_arrow_dtype: bool = None, gpu: bool = False
+) -> md.DataFrame:
     data_path = data_folder + "/part.pq"
-    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
     return df
 
 
-def load_orders(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
+def load_orders(
+    data_folder: str, use_arrow_dtype: bool = None, gpu: bool = False
+) -> md.DataFrame:
     data_path = data_folder + "/orders.pq"
-    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
     df["O_ORDERDATE"] = md.to_datetime(df.O_ORDERDATE, format="%Y-%m-%d")
     return df
 
 
-def load_customer(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
+def load_customer(
+    data_folder: str, use_arrow_dtype: bool = None, gpu: bool = False
+) -> md.DataFrame:
     data_path = data_folder + "/customer.pq"
-    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
     return df
 
 
-def load_nation(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
+def load_nation(
+    data_folder: str, use_arrow_dtype: bool = None, gpu: bool = False
+) -> md.DataFrame:
     data_path = data_folder + "/nation.pq"
-    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
     return df
 
 
-def load_region(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
+def load_region(
+    data_folder: str, use_arrow_dtype: bool = None, gpu: bool = False
+) -> md.DataFrame:
     data_path = data_folder + "/region.pq"
-    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
     return df
 
 
-def load_supplier(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
+def load_supplier(
+    data_folder: str, use_arrow_dtype: bool = None, gpu: bool = False
+) -> md.DataFrame:
     data_path = data_folder + "/supplier.pq"
-    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
     return df
 
 
-def load_partsupp(data_folder: str, use_arrow_dtype: bool = None) -> md.DataFrame:
+def load_partsupp(
+    data_folder: str, use_arrow_dtype: bool = None, gpu: bool = False
+) -> md.DataFrame:
     data_path = data_folder + "/partsupp.pq"
-    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype)
+    df = md.read_parquet(data_path, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
     return df
 
 
@@ -967,7 +983,10 @@ def q22(customer, orders):
 
 
 def run_queries(
-    data_folder: str, select: List[str] = None, use_arrow_dtype: bool = None
+    data_folder: str,
+    select: List[str] = None,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
 ):
     if select:
         global queries
@@ -975,14 +994,14 @@ def run_queries(
 
     # Load the data
     t1 = time.time()
-    lineitem = load_lineitem(data_folder, use_arrow_dtype=use_arrow_dtype)
-    orders = load_orders(data_folder, use_arrow_dtype=use_arrow_dtype)
-    customer = load_customer(data_folder, use_arrow_dtype=use_arrow_dtype)
-    nation = load_nation(data_folder, use_arrow_dtype=use_arrow_dtype)
-    region = load_region(data_folder, use_arrow_dtype=use_arrow_dtype)
-    supplier = load_supplier(data_folder, use_arrow_dtype=use_arrow_dtype)
-    part = load_part(data_folder, use_arrow_dtype=use_arrow_dtype)
-    partsupp = load_partsupp(data_folder, use_arrow_dtype=use_arrow_dtype)
+    lineitem = load_lineitem(data_folder, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
+    orders = load_orders(data_folder, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
+    customer = load_customer(data_folder, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
+    nation = load_nation(data_folder, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
+    region = load_region(data_folder, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
+    supplier = load_supplier(data_folder, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
+    part = load_part(data_folder, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
+    partsupp = load_partsupp(data_folder, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
     mars.execute([lineitem, orders, customer, nation, region, supplier, part, partsupp])
     print("Reading time (s): ", time.time() - t1)
 
@@ -1038,7 +1057,15 @@ def main():
         "--use-arrow-dtype",
         type=str,
         choices=["true", "false"],
-        help=("Use arrow dtype to read parquet"),
+        help="Use arrow dtype to read parquet",
+    )
+    parser.add_argument(
+        "--gpu", "-g", action="store_true", help="Use GPU to read parquet"
+    )
+    parser.add_argument(
+        "--cuda-devices",
+        type=str,
+        help="GPU devices to use, use comma to split, only available when using GPU",
     )
     args = parser.parse_args()
     folder = args.folder
@@ -1051,9 +1078,14 @@ def main():
     queries = (
         set(x.lower().strip() for x in args.query.split(",")) if args.query else None
     )
-    sess = mars.new_session(endpoint)
+    gpu = args.gpu
+    new_session_kwargs = dict()
+    if gpu and args.cuda_devices:
+        cuda_devices = args.cuda_devices.split(",")
+        new_session_kwargs["cuda_devices"] = [int(d) for d in cuda_devices]
+    sess = mars.new_session(endpoint, **new_session_kwargs)
     try:
-        run_queries(folder, use_arrow_dtype=use_arrow_dtype)
+        run_queries(folder, use_arrow_dtype=use_arrow_dtype, gpu=gpu)
     finally:
         if endpoint is None:
             sess.stop_server()

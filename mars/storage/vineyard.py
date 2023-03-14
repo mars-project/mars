@@ -115,6 +115,7 @@ class VineyardFileObject(BufferWrappedFileObject):
 @register_storage_backend
 class VineyardStorage(StorageBackend):
     name = "vineyard"
+    is_seekable = False
 
     def __init__(self, vineyard_size: int, vineyard_socket: str = None):
         _register_vineyard_matrices()

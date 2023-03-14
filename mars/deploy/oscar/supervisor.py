@@ -65,7 +65,7 @@ class SupervisorCommandRunner(OscarCommandRunner):
             ports=self.ports,
             modules=self.args.load_modules,
             logging_conf=self.logging_conf,
-            subprocess_start_method="forkserver" if os.name == "nt" else "spawn",
+            subprocess_start_method="forkserver" if os.name != "nt" else "spawn",
             metrics=self.config.get("metrics", {}),
         )
 

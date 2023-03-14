@@ -109,6 +109,10 @@ class ThreadedServiceContext(Context):
     def get_worker_addresses(self) -> List[str]:
         return list(self._call(self._cluster_api.get_nodes_info(role=NodeRole.WORKER)))
 
+    @implements(Context.get_worker_bands)
+    def get_worker_bands(self) -> List[BandType]:
+        return list(self._call(self._cluster_api.get_all_bands(NodeRole.WORKER)))
+
     @implements(Context.get_total_n_cpu)
     def get_total_n_cpu(self) -> int:
         all_bands = self._call(self._cluster_api.get_all_bands())

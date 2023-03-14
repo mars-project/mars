@@ -103,10 +103,38 @@ def test_context(setup_cluster):
 
     workers = spawn(get_workers).execute().fetch()
     assert len(workers) == len(set(workers)) > 1
+
     r1 = spawn(f1, args=(workers[0],), expect_worker=workers[0]).execute()
     data_key = r1._fetch_infos(fields=["data_key"])["data_key"][0]
     r2 = spawn(f2, args=(data_key, workers[1]), expect_worker=workers[1])
     r2.execute()
+
+    def get_bands():
+        ctx = get_context()
+        return [b for b in ctx.get_worker_bands() if b[1].startswith("numa-")]
+
+    def f3(band: tuple):
+        ctx = get_context()
+        assert band == ctx.band
+        return np.random.rand(3, 3)
+
+    def f4(data_key: str, band: tuple):
+        ctx = get_context()
+        assert band == ctx.band
+        meta = ctx.get_chunks_meta([data_key], fields=["bands"])[0]
+        assert len(meta) == 1
+        ctx.get_chunks_result([data_key], fetch_only=True)
+        # fetched, two bands have the data
+        meta = ctx.get_chunks_meta([data_key], fields=["bands"])[0]
+        assert len(meta["bands"]) == 2
+
+    bands = spawn(get_bands).execute().fetch()
+    assert len(bands) == len(set(bands)) > 1
+
+    r3 = spawn(f3, args=(bands[0],), expect_band=bands[0]).execute()
+    data_key = r3._fetch_infos(fields=["data_key"])["data_key"][0]
+    r4 = spawn(f4, args=(data_key, bands[1]), expect_band=bands[1])
+    r4.execute()
 
 
 def test_multi_output(setup):

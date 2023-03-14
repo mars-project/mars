@@ -29,18 +29,14 @@ from io import BytesIO
 from enum import Enum
 
 import numpy as np
-
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pd = None
+import pandas as pd
 import pytest
 
 from .. import dataframe as md
 from .. import tensor as mt
 from .. import utils
 from ..core import tile, TileableGraph
-from .core import require_ray
+from .core import require_ray, require_cudf
 
 
 def test_string_conversion():
@@ -663,3 +659,12 @@ async def test_retry_callable():
     with pytest.raises(CustomException):
         await utils.retry_callable(f2)(1)
     assert await utils.retry_callable(f2, ex_type=CustomException)(1) == 1
+
+
+@require_cudf
+def test_calc_data_size_gpu():
+    import cudf
+
+    df = pd.DataFrame({"a": ["a", "b", "a"]}, dtype="category")
+    df = cudf.from_pandas(df)
+    assert utils.calc_data_size(df) > 0

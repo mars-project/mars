@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import List, Union
 
 import numpy as np
 import pandas as pd
@@ -18,7 +19,13 @@ import pytest
 
 from .... import opcodes
 from ....config import options, option_context
-from ....core import OutputType, tile
+from ....core import OutputType, tile, Tileable
+from ....core.graph import (
+    TileableGraph,
+    TileableGraphBuilder,
+    TileContext,
+    ChunkGraphBuilder,
+)
 from ....core.operand import OperandStage
 from ....tensor.core import TENSOR_TYPE
 from ... import eval as mars_eval, cut, get_dummies, to_numeric
@@ -29,11 +36,28 @@ from ...core import (
     INDEX_TYPE,
     CATEGORICAL_TYPE,
     CATEGORICAL_CHUNK_TYPE,
+    DataFrameData,
+    SeriesData,
 )
 from ...datasource.dataframe import from_pandas as from_pandas_df
 from ...datasource.series import from_pandas as from_pandas_series
 from ...datasource.index import from_pandas as from_pandas_index
 from .. import to_gpu, to_cpu, astype
+
+
+def _get_df_after_tile(
+    tileables: List[Tileable],
+) -> List[Union[DataFrameData, SeriesData]]:
+    graph = TileableGraph(tileables)
+    next(TileableGraphBuilder(graph).build())
+    context = TileContext()
+    chunk_graph_builder = ChunkGraphBuilder(
+        graph, fuse_enabled=False, tile_context=context
+    )
+    chunk_graph_builder = chunk_graph_builder.build()
+    for _ in chunk_graph_builder:
+        pass
+    return [context[df] for df in tileables]
 
 
 def test_to_gpu():
@@ -51,7 +75,7 @@ def test_to_gpu():
     assert cdf.op.gpu is True
     pd.testing.assert_series_equal(df.dtypes, cdf.dtypes)
 
-    df, cdf = tile(df, cdf)
+    df, cdf = _get_df_after_tile([df.data, cdf.data])
 
     assert df.nsplits == cdf.nsplits
     assert df.chunks[0].index_value == cdf.chunks[0].index_value
@@ -69,7 +93,7 @@ def test_to_gpu():
     assert series.index_value == cseries.index_value
     assert cseries.op.gpu is True
 
-    series, cseries = tile(series, cseries)
+    series, cseries = _get_df_after_tile([series.data, cseries.data])
 
     assert series.nsplits == cseries.nsplits
     assert series.chunks[0].index_value == cseries.chunks[0].index_value
@@ -93,7 +117,7 @@ def test_to_cpu():
     assert df2.op.gpu is False
     pd.testing.assert_series_equal(df.dtypes, df2.dtypes)
 
-    df, df2 = tile(df, df2)
+    df, df2 = _get_df_after_tile([df.data, df2.data])
 
     assert df.nsplits == df2.nsplits
     assert df.chunks[0].index_value == df2.chunks[0].index_value

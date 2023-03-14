@@ -107,7 +107,8 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
             result = in_data.transform(op.func, axis=op.axis, *op.args, **op.kwds)
 
         if isinstance(out_chunk, DATAFRAME_CHUNK_TYPE):
-            result.columns = out_chunk.dtypes.index
+            if out_chunk.dtypes is not None:
+                result.columns = out_chunk.dtypes.index
         ctx[op.outputs[0].key] = result
 
     @classmethod
@@ -141,7 +142,14 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
             params = c.params.copy()
 
             if out_df.ndim == 2:
-                if isinstance(c, DATAFRAME_CHUNK_TYPE):
+                if out_df.dtypes is None:
+                    new_dtypes = None
+                    new_shape = [c.shape[0], np.nan]
+                    new_index = c.index
+                    new_columns_value = None
+                    if c.index[0] == 0:
+                        col_sizes.append(np.nan)
+                elif isinstance(c, DATAFRAME_CHUNK_TYPE):
                     columns = c.columns_value.to_pandas()
                     new_dtypes = filter_dtypes_by_index(out_df.dtypes, columns)
 
@@ -272,32 +280,40 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
 
         return new_dtypes
 
-    def __call__(self, df, dtypes=None, index=None):
+    def __call__(self, df, dtypes=None, index=None, skip_infer=None):
         axis = getattr(self, "axis", None) or 0
         self._axis = validate_axis(axis, df)
 
-        dtypes = self._infer_df_func_returns(df, dtypes)
+        if not skip_infer:
+            dtypes = self._infer_df_func_returns(df, dtypes)
 
         if self.output_types[0] == OutputType.dataframe:
             new_shape = list(df.shape)
             new_index_value = df.index_value
             if len(new_shape) == 1:
-                new_shape.append(len(dtypes))
+                new_shape.append(len(dtypes) if dtypes is not None else np.nan)
             else:
-                new_shape[1] = len(dtypes)
+                new_shape[1] = len(dtypes) if dtypes is not None else np.nan
 
             if self.call_agg:
                 new_shape[self.axis] = np.nan
                 new_index_value = parse_index(None, (df.key, df.index_value.key))
+            if dtypes is None:
+                columns_value = None
+            else:
+                columns_value = parse_index(dtypes.index, store_data=True)
             return self.new_dataframe(
                 [df],
                 shape=tuple(new_shape),
                 dtypes=dtypes,
                 index_value=new_index_value,
-                columns_value=parse_index(dtypes.index, store_data=True),
+                columns_value=columns_value,
             )
         else:
-            name, dtype = dtypes
+            if dtypes is not None:
+                name, dtype = dtypes
+            else:
+                name, dtype = None, None
 
             if isinstance(df, DATAFRAME_TYPE):
                 new_shape = (df.shape[1 - axis],)
@@ -315,7 +331,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
             )
 
 
-def df_transform(df, func, axis=0, *args, dtypes=None, **kwargs):
+def df_transform(df, func, axis=0, *args, dtypes=None, skip_infer=False, **kwargs):
     """
     Call ``func`` on self producing a DataFrame with transformed values.
 
@@ -339,6 +355,9 @@ def df_transform(df, func, axis=0, *args, dtypes=None, **kwargs):
 
     dtypes : Series, default None
         Specify dtypes of returned DataFrames. See `Notes` for more details.
+
+    skip_infer: bool, default False
+        Whether infer dtypes when dtypes or output_type is not specified.
 
     *args
         Positional arguments to pass to `func`.
@@ -405,11 +424,18 @@ def df_transform(df, func, axis=0, *args, dtypes=None, **kwargs):
         output_types=[OutputType.dataframe],
         call_agg=kwargs.pop("_call_agg", False),
     )
-    return op(df, dtypes=dtypes)
+    return op(df, dtypes=dtypes, skip_infer=skip_infer)
 
 
 def series_transform(
-    series, func, convert_dtype=True, axis=0, *args, dtype=None, **kwargs
+    series,
+    func,
+    convert_dtype=True,
+    axis=0,
+    *args,
+    skip_infer=False,
+    dtype=None,
+    **kwargs
 ):
     """
     Call ``func`` on self producing a Series with transformed values.
@@ -433,6 +459,9 @@ def series_transform(
 
     dtype : numpy.dtype, default None
         Specify dtypes of returned DataFrames. See `Notes` for more details.
+
+    skip_infer: bool, default False
+        Whether infer dtypes when dtypes or output_type is not specified.
 
     *args
         Positional arguments to pass to `func`.
@@ -501,4 +530,4 @@ def series_transform(
         call_agg=kwargs.pop("_call_agg", False),
     )
     dtypes = (series.name, dtype) if dtype is not None else None
-    return op(series, dtypes=dtypes)
+    return op(series, dtypes=dtypes, skip_infer=skip_infer)

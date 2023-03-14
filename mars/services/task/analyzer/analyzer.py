@@ -25,14 +25,15 @@ from ....core.operand import (
     LogicKeyGenerator,
     MapReduceOperand,
     OperandStage,
-    ShuffleFetchType,
     ShuffleProxy,
+    ShuffleFetchType,
 )
+from ....lib.ordered_set import OrderedSet
 from ....resource import Resource
 from ....typing import BandType, OperandType
 from ....utils import build_fetch, build_fetch_shuffle, tokenize
 from ...subtask import SubtaskGraph, Subtask
-from ..core import Task, new_task_id
+from ..core import Task, new_task_id, MapReduceInfo
 from .assigner import AbstractGraphAssigner, GraphAssigner
 from .fusion import Coloring
 
@@ -96,6 +97,8 @@ class GraphAnalyzer:
     chunk graph and generated subtask graph.
     """
 
+    _map_reduce_id = itertools.count()
+
     def __init__(
         self,
         chunk_graph: ChunkGraph,
@@ -105,6 +108,7 @@ class GraphAnalyzer:
         chunk_to_subtasks: Dict[ChunkType, Subtask],
         graph_assigner_cls: Type[AbstractGraphAssigner] = None,
         stage_id: str = None,
+        map_reduce_id_to_infos: Dict[int, MapReduceInfo] = None,
         shuffle_fetch_type: ShuffleFetchType = ShuffleFetchType.FETCH_BY_KEY,
     ):
         self._chunk_graph = chunk_graph
@@ -120,11 +124,16 @@ class GraphAnalyzer:
         self._fuse_enabled = task.fuse_enabled
         self._extra_config = task.extra_config
         self._chunk_to_subtasks = chunk_to_subtasks
+        self._map_reduce_id_to_infos = map_reduce_id_to_infos
         if graph_assigner_cls is None:
             graph_assigner_cls = GraphAssigner
         self._graph_assigner_cls = graph_assigner_cls
         self._chunk_to_copied = dict()
         self._logic_key_generator = LogicKeyGenerator()
+
+    @classmethod
+    def next_map_reduce_id(cls) -> int:
+        return next(cls._map_reduce_id)
 
     @classmethod
     def _iter_start_ops(cls, chunk_graph: ChunkGraph):
@@ -198,6 +207,13 @@ class GraphAnalyzer:
         else:
             return band_or_worker, "numa-0"
 
+    @staticmethod
+    def _get_expect_band(op: OperandType):
+        if op.expect_band is not None:
+            return op.expect_band
+        elif op.expect_worker is not None:
+            return GraphAnalyzer._to_band(op.expect_worker)
+
     def _gen_subtask_info(
         self,
         chunks: List[ChunkType],
@@ -218,22 +234,20 @@ class GraphAnalyzer:
         is_virtual = None
         retryable = True
         chunk_priority = None
-        expect_worker = None
+        expect_band = None
         bands_specified = None
         processed = set()
         for chunk in chunks:
             if chunk in processed:
                 continue
-            if expect_worker is None:
-                expect_worker = chunk.op.expect_worker
-                bands_specified = expect_worker is not None
+            if expect_band is None:
+                expect_band = self._get_expect_band(chunk.op)
+                bands_specified = expect_band is not None
             else:  # pragma: no cover
-                assert (
-                    chunk.op.expect_worker is None
-                    or expect_worker == chunk.op.expect_worker
-                ), (
-                    f"expect_worker {chunk.op.expect_worker} conflicts with chunks that have same color: "
-                    f"{expect_worker}"
+                curr_expect_band = self._get_expect_band(chunk.op)
+                assert curr_expect_band is None or expect_band == curr_expect_band, (
+                    f"expect_band {curr_expect_band} conflicts with chunks that have same color: "
+                    f"{expect_band}"
                 )
             # process band
             chunk_band = chunk_to_bands.get(chunk)
@@ -310,9 +324,7 @@ class GraphAnalyzer:
             if c not in result_chunks_set
         )
         expect_bands = (
-            [self._to_band(expect_worker)]
-            if bands_specified
-            else ([band] if band is not None else None)
+            [expect_band] if bands_specified else ([band] if band is not None else None)
         )
         # calculate priority
         if out_of_scope_chunks:
@@ -367,6 +379,38 @@ class GraphAnalyzer:
             *[self._logic_key_generator.get_logic_key(chunk.op) for chunk in chunks]
         )
 
+    def _gen_map_reduce_info(
+        self, chunk: ChunkType, assign_results: Dict[ChunkType, BandType]
+    ):
+        reducer_ops = OrderedSet(
+            [
+                c.op
+                for c in self._chunk_graph.successors(chunk)
+                if c.op.stage == OperandStage.reduce
+            ]
+        )
+        map_chunks = [
+            c
+            for c in self._chunk_graph.predecessors(chunk)
+            if (c.op.stage == OperandStage.map) or c.is_mapper
+        ]
+        map_reduce_id = self.next_map_reduce_id()
+        for map_chunk in map_chunks:
+            # record analyzer map reduce id for mapper op
+            # copied chunk exists because map chunk must have
+            # been processed before shuffle proxy
+            copied_map_chunk = self._chunk_to_copied[map_chunk]
+            if not hasattr(copied_map_chunk, "extra_params"):  # pragma: no cover
+                copied_map_chunk.extra_params = dict()
+            copied_map_chunk.extra_params["analyzer_map_reduce_id"] = map_reduce_id
+        reducer_bands = [assign_results[r.outputs[0]] for r in reducer_ops]
+        map_reduce_info = MapReduceInfo(
+            map_reduce_id=map_reduce_id,
+            reducer_indexes=[reducer_op.reducer_index for reducer_op in reducer_ops],
+            reducer_bands=reducer_bands,
+        )
+        self._map_reduce_id_to_infos[map_reduce_id] = map_reduce_info
+
     @enter_mode(build=True)
     def gen_subtask_graph(
         self, op_to_bands: Dict[str, BandType] = None
@@ -395,11 +439,11 @@ class GraphAnalyzer:
         assigner = self._graph_assigner_cls(
             self._chunk_graph, to_assign_ops, self._band_resource
         )
-        # assign expect workers
+        # assign expect bands
         cur_assigns = {
-            op.key: self._to_band(op.expect_worker)
+            op.key: self._get_expect_band(op)
             for op in start_ops
-            if op.expect_worker is not None
+            if op.expect_band is not None or op.expect_worker is not None
         }
         if op_to_bands:
             cur_assigns.update(op_to_bands)
@@ -412,12 +456,15 @@ class GraphAnalyzer:
         logger.debug(
             "Assigned %s start chunks for task %s", len(start_ops), self._task.task_id
         )
-        # assign expect workers for those specified with `expect_worker`
+        # assign expect workers for those specified with `expect_worker` or `expect_band`
         # skip `start_ops`, which have been assigned before
         start_ops_set = set(start_ops)
         for chunk in self._chunk_graph:
-            if chunk not in start_ops_set and chunk.op.expect_worker is not None:
-                chunk_to_bands[chunk] = self._to_band(chunk.op.expect_worker)
+            if chunk not in start_ops_set:
+                if chunk.op.expect_band is not None:
+                    chunk_to_bands[chunk] = chunk.op.expect_band
+                elif chunk.op.expect_worker is not None:
+                    chunk_to_bands[chunk] = self._to_band(chunk.op.expect_worker)
 
         # color nodes
         if self._fuse_enabled:
@@ -536,6 +583,10 @@ class GraphAnalyzer:
 
             for c in same_color_chunks:
                 chunk_to_subtask[c] = subtask
+                if self._map_reduce_id_to_infos is not None and isinstance(
+                    c.op, ShuffleProxy
+                ):
+                    self._gen_map_reduce_info(c, chunk_to_bands)
 
         for subtasks in logic_key_to_subtasks.values():
             for logic_index, subtask in enumerate(subtasks):

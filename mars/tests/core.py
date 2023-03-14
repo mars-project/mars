@@ -278,6 +278,11 @@ class ObjectCheckMixin:
 
     @staticmethod
     def assert_dtype_consistent(expected_dtype, real_dtype):
+        cate_dtypes = [pd.CategoricalDtype]
+        if cudf:
+            cate_dtypes.append(cudf.CategoricalDtype)
+        cate_dtypes = tuple(cate_dtypes)
+
         if isinstance(real_dtype, pd.DatetimeTZDtype):
             real_dtype = real_dtype.base
         if expected_dtype != real_dtype:
@@ -286,8 +291,8 @@ class ObjectCheckMixin:
                 return
             if expected_dtype is None:
                 raise AssertionError("Expected dtype cannot be None")
-            if isinstance(real_dtype, pd.CategoricalDtype) and isinstance(
-                expected_dtype, pd.CategoricalDtype
+            if isinstance(real_dtype, cate_dtypes) and isinstance(
+                expected_dtype, cate_dtypes
             ):
                 return
             if not np.can_cast(real_dtype, expected_dtype) and not np.can_cast(

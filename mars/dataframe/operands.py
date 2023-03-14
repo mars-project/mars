@@ -133,6 +133,10 @@ class DataFrameOperandMixin(TileableOperandMixin):
             inputs, shape=shape, dtype=dtype, index_value=index_value, name=name, **kw
         )[0]
 
+    def new_df_or_series(self, inputs, **kw):
+        setattr(self, "_output_types", [OutputType.df_or_series])
+        return self.new_tileables(inputs, **kw)[0]
+
     def new_indexes(
         self,
         inputs,

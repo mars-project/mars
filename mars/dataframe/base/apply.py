@@ -239,7 +239,13 @@ class ApplyOperand(
             in_df = yield from recursive_tile(in_df.rechunk(chunk_size))
 
         chunks = []
-        if out_df.ndim == 2:
+        if op.output_types and op.output_types[0] == OutputType.df_or_series:
+            for c in in_df.chunks:
+                new_op = op.copy().reset_key()
+                new_op.tileable_op_key = op.key
+                chunks.append(new_op.new_chunk([c], collapse_axis=axis, index=c.index))
+            new_nsplits = None
+        elif out_df.ndim == 2:
             for c in in_df.chunks:
                 if elementwise:
                     new_shape = c.shape
@@ -295,18 +301,24 @@ class ApplyOperand(
 
         new_op = op.copy()
         kw = out_df.params.copy()
-        kw.update(dict(chunks=chunks, nsplits=tuple(new_nsplits)))
+        if isinstance(new_nsplits, list):
+            new_nsplits = tuple(new_nsplits)
+        kw.update(dict(chunks=chunks, nsplits=new_nsplits))
         return new_op.new_tileables(op.inputs, **kw)
 
     @classmethod
     def _tile_series(cls, op):
         in_series = op.inputs[0]
         out_series = op.outputs[0]
+        output_type = op.output_types[0] if op.output_types else None
 
         chunks = []
         for c in in_series.chunks:
             new_op = op.copy().reset_key()
             new_op.tileable_op_key = op.key
+            if output_type == OutputType.df_or_series:
+                chunks.append(new_op.new_chunk([c], collapse_axis=None, index=c.index))
+                continue
             kw = c.params.copy()
             if out_series.ndim == 1:
                 kw["dtype"] = out_series.dtype
@@ -319,8 +331,11 @@ class ApplyOperand(
 
         new_op = op.copy()
         kw = out_series.params.copy()
-        kw.update(dict(chunks=chunks, nsplits=in_series.nsplits))
-        if out_series.ndim == 2:
+        if output_type == OutputType.df_or_series:
+            kw.update(dict(chunks=chunks, nsplits=None))
+        else:
+            kw.update(dict(chunks=chunks, nsplits=in_series.nsplits))
+        if output_type != OutputType.df_or_series and out_series.ndim == 2:
             kw["nsplits"] = (in_series.nsplits[0], (out_series.shape[1],))
             kw["columns_value"] = out_series.columns_value
         return new_op.new_tileables(op.inputs, **kw)
@@ -387,6 +402,9 @@ class ApplyOperand(
             new_elementwise if self._elementwise is None else self._elementwise
         )
         return dtypes, index_value
+
+    def _call_df_or_series(self, df):
+        return self.new_df_or_series([df])
 
     def _call_dataframe(self, df, dtypes=None, dtype=None, name=None, index=None):
         # for backward compatibility
@@ -520,6 +538,9 @@ class ApplyOperand(
         dtype = make_dtype(dtype)
         self._axis = validate_axis(axis, df_or_series)
 
+        if self.output_types and self.output_types[0] == OutputType.df_or_series:
+            return self._call_df_or_series(df_or_series)
+
         if df_or_series.op.output_types[0] == OutputType.dataframe:
             return self._call_dataframe(
                 df_or_series, dtypes=dtypes, dtype=dtype, name=name, index=index
@@ -543,6 +564,7 @@ def df_apply(
     output_type=None,
     index=None,
     elementwise=None,
+    skip_infer=False,
     **kwds,
 ):
     """
@@ -614,6 +636,9 @@ def df_apply(
         * ``True`` : The function is elementwise. Mars will apply
           ``func`` to original chunks. This will not introduce extra
           concatenation step and reduce overhead.
+
+    skip_infer: bool, default False
+        Whether infer dtypes when dtypes or output_type is not specified.
 
     args : tuple
         Positional arguments to pass to `func` in addition to the
@@ -712,7 +737,7 @@ def df_apply(
     2  1  2
     """
     if isinstance(func, (list, dict)):
-        return df.aggregate(func)
+        return df.aggregate(func, axis)
 
     output_types = kwds.pop("output_types", None)
     object_type = kwds.pop("object_type", None)
@@ -720,6 +745,8 @@ def df_apply(
         output_type=output_type, output_types=output_types, object_type=object_type
     )
     output_type = output_types[0] if output_types else None
+    if skip_infer and output_type is None:
+        output_type = OutputType.df_or_series
 
     # calling member function
     if isinstance(func, str):
@@ -752,6 +779,7 @@ def series_apply(
     dtype=None,
     name=None,
     index=None,
+    skip_infer=False,
     **kwds,
 ):
     """
@@ -786,6 +814,9 @@ def series_apply(
 
     args : tuple
         Positional arguments passed to func after the series value.
+
+    skip_infer: bool, default False
+        Whether infer dtypes when dtypes or output_type is not specified.
 
     **kwds
         Additional keyword arguments passed to func.
@@ -890,6 +921,9 @@ def series_apply(
                 f"'{func_str!r}' is not a valid function "
                 f"for '{type(series).__name__}' object"
             )
+
+    if skip_infer and output_type is None:
+        output_type = OutputType.df_or_series
 
     output_types = kwds.pop("output_types", None)
     object_type = kwds.pop("object_type", None)

@@ -22,7 +22,7 @@ import logging
 import operator
 from contextlib import contextmanager
 from numbers import Integral
-from typing import List, Union
+from typing import List, Union, Any
 
 import numpy as np
 import pandas as pd
@@ -606,7 +606,7 @@ def build_df(df_obj, fill_value=1, size=1, ensure_string=False):
         for i, dtype in enumerate(dtypes):
             s = df.iloc[:, i]
             if not pd.api.types.is_dtype_equal(s.dtype, dtype):
-                df.iloc[:, i] = s.astype(dtype)
+                df[df.columns[i]] = s.astype(dtype)
         dfs.append(df)
     if len(dfs) == 1:
         ret_df = dfs[0]
@@ -1566,6 +1566,17 @@ def restore_func(ctx: Context, op):
             logger.info("%s func %s is restored.", op, op.func)
         else:
             op.func = cloudpickle.loads(op.func)
+
+
+def concat_on_columns(objs: List) -> Any:
+    xdf = get_xdf(objs[0])
+    # In cudf, concat with axis=1 and ignore_index=False by default behaves opposite to pandas.
+    # Cudf would reset the index when axis=1 and ignore_index=False, which does not match with its document.
+    # Therefore, we deal with this case specially.
+    result = xdf.concat(objs, axis=1)
+    if xdf is cudf:
+        result.index = objs[0].index
+    return result
 
 
 def patch_sa_engine_execute():

@@ -68,7 +68,7 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
     done = property(_get_done, _set_done)
 
     def _check_nsplits(self, tiled: TileableType):
-        if tiled.nsplits == () and len(tiled.chunks) == 1:
+        if tiled.nsplits is None or (tiled.nsplits == () and len(tiled.chunks) == 1):
             return
 
         nsplit_chunk_shape = tuple(len(s) for s in tiled.nsplits)
@@ -177,6 +177,7 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
             self._config,
             chunk_to_subtasks,
             shuffle_fetch_type=shuffle_fetch_type,
+            map_reduce_id_to_infos=self.map_reduce_id_to_infos,
         )
         subtask_graph = analyzer.gen_subtask_graph()
         results = set(

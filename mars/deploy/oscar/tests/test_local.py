@@ -50,6 +50,7 @@ from ..local import new_cluster, _load_config
 from ..session import (
     get_default_async_session,
     get_default_session,
+    clear_default_session,
     new_session,
     execute,
     fetch,
@@ -123,7 +124,7 @@ async def create_cluster(request):
         subprocess_start_method=start_method,
         config=config,
         n_worker=2,
-        n_cpu=2,
+        n_cpu=4,
         use_uvloop=False,
     )
     async with client:
@@ -1175,3 +1176,9 @@ def test_fetch_concat(config):
 
     session.stop_server()
     assert get_default_async_session() is None
+
+
+def test_clear_default_session(setup):
+    assert get_default_session() is not None
+    clear_default_session()
+    assert get_default_session() is None

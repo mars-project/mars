@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....dataframe.indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
+from .core import register_operand_based_optimization_rule
 from ..common.head import HeadPushDown
-from .core import register_chunk_optimization_rule
+from ....dataframe.indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
 
 
-@register_chunk_optimization_rule([DataFrameIlocGetItem, SeriesIlocGetItem])
+@register_operand_based_optimization_rule([DataFrameIlocGetItem, SeriesIlocGetItem])
 class ChunkHeadPushDown(HeadPushDown):
     """
     Head push down.

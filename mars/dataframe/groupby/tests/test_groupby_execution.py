@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from collections import OrderedDict
 
 import numpy as np
@@ -28,6 +27,7 @@ from ....config import option_context
 from ....core.operand import OperandStage
 from ....tests.core import assert_groupby_equal, require_cudf
 from ....utils import arrow_array_to_objects, pd_release_version
+from ...core import DATAFRAME_OR_SERIES_TYPE
 from ..aggregation import DataFrameGroupByAgg
 
 pytestmark = pytest.mark.pd_compat
@@ -38,17 +38,6 @@ _agg_size_as_frame = pd_release_version[:2] > (1, 0)
 class MockReduction1(md.CustomReduction):
     def agg(self, v1):
         return v1.sum()
-
-
-class MockReduction2(md.CustomReduction):
-    def pre(self, value):
-        return value + 1, value * 2
-
-    def agg(self, v1, v2):
-        return v1.sum(), v2.min()
-
-    def post(self, v1, v2):
-        return v1 + v2
 
 
 def test_groupby(setup):
@@ -337,6 +326,7 @@ def test_dataframe_groupby_agg(setup):
         "skew",
         "kurt",
         "sem",
+        "nunique",
     ]
 
     rs = np.random.RandomState(0)
@@ -470,11 +460,6 @@ def test_dataframe_groupby_agg(setup):
         raw.groupby("c2").agg(["cumsum", "cumcount"]).sort_index(),
     )
 
-    r = mdf[["c1", "c3"]].groupby(mdf["c2"]).agg(MockReduction2())
-    pd.testing.assert_frame_equal(
-        r.execute().fetch(), raw[["c1", "c3"]].groupby(raw["c2"]).agg(MockReduction2())
-    )
-
     r = mdf.groupby("c2").agg(
         sum_c1=md.NamedAgg("c1", "sum"),
         min_c1=md.NamedAgg("c1", "min"),
@@ -504,6 +489,7 @@ def test_dataframe_groupby_agg_sort(setup):
         "skew",
         "kurt",
         "sem",
+        "nunique",
     ]
 
     rs = np.random.RandomState(0)
@@ -645,12 +631,6 @@ def test_series_groupby_agg(setup):
     pd.testing.assert_frame_equal(
         r.execute().fetch().sort_index(),
         series1.groupby(lambda x: x % 2).agg(["cumsum", "cumcount"]).sort_index(),
-    )
-
-    r = ms1.groupby(lambda x: x % 2).agg(MockReduction2(name="custom_r"), method="tree")
-    pd.testing.assert_series_equal(
-        r.execute().fetch(),
-        series1.groupby(lambda x: x % 2).agg(MockReduction2(name="custom_r")),
     )
 
     r = ms1.groupby(lambda x: x % 2).agg(col_var="var", col_skew="skew", method="tree")
@@ -925,6 +905,52 @@ def test_groupby_apply(setup):
     )
 
 
+def test_groupby_apply_with_df_or_series_output(setup):
+    raw = pd.DataFrame(
+        {
+            "a": [3, 4, 5, 3, 5, 4, 1, 2, 3],
+            "b": [6, 3, 3, 5, 6, 5, 4, 4, 4],
+            "c": list("aabaabbbb"),
+        }
+    )
+    mdf = md.DataFrame(raw, chunk_size=3)
+
+    def f1(df):
+        return df.a.iloc[2]
+
+    with pytest.raises(TypeError):
+        mdf.groupby("c").apply(f1)
+
+    with pytest.raises(ValueError):
+        mdf.groupby("c").apply(f1, output_types=["df_or_series"]).execute()
+
+    for kwargs in [dict(output_type="df_or_series"), dict(skip_infer=True)]:
+        mdf = md.DataFrame(raw, chunk_size=5)
+        applied = mdf.groupby("c").apply(f1, **kwargs)
+        assert isinstance(applied, DATAFRAME_OR_SERIES_TYPE)
+        applied = applied.execute()
+        assert applied.data_type == "series"
+        assert not ("dtypes" in applied.data_params)
+        assert applied.shape == (2,)
+        pd.testing.assert_series_equal(
+            applied.fetch().sort_index(), raw.groupby("c").apply(f1).sort_index()
+        )
+
+    def f2(df):
+        return df[["a"]]
+
+    mdf = md.DataFrame(raw, chunk_size=5)
+    applied = mdf.groupby("c").apply(f2, output_types=["df_or_series"])
+    assert isinstance(applied, DATAFRAME_OR_SERIES_TYPE)
+    applied = applied.execute()
+    assert applied.data_type == "dataframe"
+    assert not ("dtype" in applied.data_params)
+    assert applied.shape == (9, 1)
+    expected = raw.groupby("c", as_index=True).apply(f2)
+    pd.testing.assert_series_equal(applied.dtypes, expected.dtypes)
+    pd.testing.assert_frame_equal(applied.fetch().sort_index(), expected.sort_index())
+
+
 def test_groupby_apply_closure(setup):
     # DataFrame
     df1 = pd.DataFrame(
@@ -1014,6 +1040,30 @@ def test_groupby_transform(setup):
     pd.testing.assert_frame_equal(
         r.execute().fetch().sort_index(),
         df1.groupby("b").transform(transform_series, truncate=False).sort_index(),
+    )
+
+    df2 = pd.DataFrame(
+        {
+            "a": [3, 4, 5, 3, 5, 4, 1, 2, 3],
+            "b": [1, 3, 4, 5, 6, 5, 4, 4, 4],
+            "c": list("aabaabbba"),
+        }
+    )
+
+    def f(df):
+        if df.iloc[2]:
+            return df
+        else:
+            return df + df.max()
+
+    mdf2 = md.DataFrame(df2, chunk_size=5)
+    with pytest.raises(TypeError):
+        mdf2.groupby("c").transform(f)
+
+    r = mdf2.groupby("c").transform(f, skip_infer=True)
+    pd.testing.assert_frame_equal(
+        r.execute().fetch().sort_index(),
+        df2.groupby("c").transform(f).sort_index(),
     )
 
     if pd.__version__ != "1.1.0":

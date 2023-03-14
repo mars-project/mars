@@ -104,6 +104,9 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
         test_right = self._build_test_obj(right)
         output_type = self._output_types[0] if self._output_types else None
 
+        if output_type == OutputType.df_or_series:
+            return self.new_df_or_series([left, right])
+
         # try run to infer meta
         try:
             with np.errstate(all="ignore"), quiet_stdio():
@@ -158,6 +161,7 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
         left = op.left
         right = op.right
         out = op.outputs[0]
+        out_type = op.output_types[0]
 
         if left.ndim == 2 and left.chunk_shape[1] > 1:
             if has_unknown_shape(left):
@@ -171,13 +175,25 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
             right = yield from recursive_tile(right.rechunk({1: right.shape[1]}))
 
         out_chunks = []
-        nsplits = [[]] if out.ndim == 1 else [[], [out.shape[1]]]
+        if out_type == OutputType.dataframe:
+            nsplits = [[], [out.shape[1]]]
+        elif out_type == OutputType.series:
+            nsplits = [[]]
+        else:
+            # DataFrameOrSeries
+            nsplits = None
         i = 0
         for left_chunk in left.chunks:
             for right_chunk in right.chunks:
                 chunk_op = op.copy().reset_key()
                 chunk_op.tileable_op_key = op.key
-                if op.output_types[0] == OutputType.dataframe:
+                if out_type == OutputType.df_or_series:
+                    out_chunks.append(
+                        chunk_op.new_chunk(
+                            [left_chunk, right_chunk], index=(i, 0), collapse_axis=1
+                        )
+                    )
+                elif out_type == OutputType.dataframe:
                     shape = (np.nan, out.shape[1])
                     index_value = parse_index(
                         out.index_value.to_pandas(),
@@ -220,7 +236,7 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
                 i += 1
 
         params = out.params
-        params["nsplits"] = tuple(tuple(ns) for ns in nsplits)
+        params["nsplits"] = tuple(tuple(ns) for ns in nsplits) if nsplits else nsplits
         params["chunks"] = out_chunks
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=[params])
@@ -233,7 +249,7 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
         ctx[op.outputs[0].key] = op.func(left, right, *op.args, **(op.kwargs or dict()))
 
 
-def cartesian_chunk(left, right, func, args=(), **kwargs):
+def cartesian_chunk(left, right, func, skip_infer=False, args=(), **kwargs):
     output_type = kwargs.pop("output_type", None)
     output_types = kwargs.pop("output_types", None)
     object_type = kwargs.pop("object_type", None)
@@ -243,6 +259,8 @@ def cartesian_chunk(left, right, func, args=(), **kwargs):
     output_type = output_types[0] if output_types else None
     if output_type:
         output_types = [output_type]
+    elif skip_infer:
+        output_types = [OutputType.df_or_series]
     index = kwargs.pop("index", None)
     dtypes = kwargs.pop("dtypes", None)
     memory_scale = kwargs.pop("memory_scale", None)

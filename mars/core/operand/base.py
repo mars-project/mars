@@ -23,12 +23,13 @@ from ...serialization.serializables import (
     SerializableMeta,
     FieldTypes,
     BoolField,
-    Int32Field,
-    Float32Field,
-    StringField,
-    ListField,
     DictField,
+    Float32Field,
+    Int32Field,
+    ListField,
     ReferenceField,
+    StringField,
+    TupleField,
 )
 from ...serialization.core import Placeholder
 from ...serialization.serializables import Serializable
@@ -36,7 +37,7 @@ from ...serialization.serializables.core import SerializableSerializer
 from ...typing import OperandType
 from ...utils import AttributeDict, classproperty, tokenize
 from ..base import Base
-from ..entity.core import Entity, EntityData
+from ..entity.core import Entity, EntityData, ENTITY_TYPE
 from ..entity.chunks import Chunk
 from ..entity.tileables import Tileable
 from ..entity.output_types import OutputType
@@ -65,6 +66,14 @@ class SchedulingHint(Serializable):
     # if specified, the op should be executed on the specified worker
     # only work for those operand that has no input
     expect_worker = StringField("expect_worker", default=None)
+    # band to execute, only work for chunk op,
+    # if specified, the op should be executed on the specified band
+    # only work for those operand that has no input
+    expect_band = TupleField(
+        "expect_band",
+        FieldTypes.tuple(FieldTypes.string, FieldTypes.string),
+        default=None,
+    )
     # will this operand be assigned a worker or not
     reassign_worker = BoolField("reassign_worker", default=False)
     # mark a op as fuseable
@@ -232,7 +241,7 @@ class Operand(Base, OperatorLogicKeyGeneratorMixin, metaclass=OperandMetaclass):
         setattr(self, "_inputs", inputs)
 
     @property
-    def inputs(self) -> List[Union[Chunk, Tileable]]:
+    def inputs(self) -> List[Union[ENTITY_TYPE]]:
         inputs = self._inputs
         if inputs is None:
             inputs = self._inputs = []
