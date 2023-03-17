@@ -407,9 +407,11 @@ class RayCluster:
         self,
         cluster_name: str,
         supervisor_cpu: Union[int, float] = 1,
+        supervisor_gpu: Union[int, float] = 0,
         supervisor_mem: int = 1 * 1024**3,
         worker_num: int = 1,
         worker_cpu: Union[int, float] = 2,
+        worker_gpu: Union[int, float] = 0,
         worker_mem: int = 2 * 1024**3,
         backend: str = None,
         config: Union[str, Dict] = None,
@@ -419,10 +421,12 @@ class RayCluster:
         init_extension_entrypoints()
         self._cluster_name = cluster_name
         self._supervisor_cpu = supervisor_cpu
+        self._supervisor_gpu = supervisor_gpu
         self._supervisor_mem = supervisor_mem
         self._n_supervisor_process = n_supervisor_process
         self._worker_num = worker_num
         self._worker_cpu = worker_cpu
+        self._worker_gpu = worker_gpu
         self._worker_mem = worker_mem
         self.backend = backend
         # load config file to dict.
@@ -449,14 +453,19 @@ class RayCluster:
         execution_config = ExecutionConfig.from_config(
             self._config, backend=self.backend
         )
+        # if the backend field is mars, then enter the Mars on Ray mode;
+        # otherwise if it is ray, then enter into the Mars on Ray-DAG mode.
         self.backend = execution_config.backend
         if self.backend == "mars":
             await self.start_oscar(
                 self._n_supervisor_process,
                 self._supervisor_cpu,
+                self._supervisor_gpu,
                 self._supervisor_mem,
+                # in Mars on Ray mode, SubPools are needed.
                 self._worker_num,
                 self._worker_cpu,
+                self._worker_gpu,
                 self._worker_mem,
             )
         elif self.backend == "ray":
@@ -474,7 +483,10 @@ class RayCluster:
             await self.start_oscar(
                 self._n_supervisor_process,
                 self._supervisor_cpu,
+                self._supervisor_gpu,
                 self._supervisor_mem,
+                # In Ray DAG mode, SubPools are not needed.
+                0,
                 0,
                 0,
                 0,
@@ -486,9 +498,11 @@ class RayCluster:
         self,
         n_supervisor_process,
         supervisor_cpu,
+        supervisor_gpu,
         supervisor_mem,
         worker_num,
         worker_cpu,
+        worker_gpu,
         worker_mem,
     ):
         logger.info("Start cluster with config %s", self._config)
@@ -582,7 +596,9 @@ class RayCluster:
                     addr,
                     {
                         "numa-0": Resource(
-                            num_cpus=worker_cpu, mem_bytes=self._worker_mem
+                            num_cpus=worker_cpu,
+                            num_gpus=worker_gpu,
+                            mem_bytes=self._worker_mem
                         )
                     },
                     modules=get_third_party_modules_from_config(
