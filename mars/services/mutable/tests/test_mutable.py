@@ -20,7 +20,7 @@ import pytest
 import numpy as np
 
 from ....deploy.oscar.local import new_cluster
-from ....deploy.oscar.session import AsyncSession, SyncSession
+from ....session import AsyncSession, SyncSession
 from ..core import MutableTensor
 from ..utils import normalize_timestamp
 

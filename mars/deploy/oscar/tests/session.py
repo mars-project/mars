@@ -20,20 +20,22 @@ import uuid
 from ....conftest import MARS_CI_BACKEND
 from ....core import OBJECT_TYPE
 from ....deploy.oscar.local import LocalCluster, LocalClient
-from ....tests.core import _check_args, ObjectCheckMixin
-from ..session import (
-    _IsolatedSession,
+from ....session import (
     AbstractSession,
     AsyncSession,
     ensure_isolation_created,
     _ensure_sync,
 )
+from ....tests.core import _check_args, ObjectCheckMixin
+from ..session import _IsolatedSession
 
 
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "check_enabled_config.yml")
 
 
 class CheckedSession(ObjectCheckMixin, _IsolatedSession):
+    schemes = ["test"]
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._tileable_checked = dict()
@@ -79,6 +81,8 @@ async def _new_test_session(
     timeout: float = None,
     **kwargs,
 ) -> AbstractSession:
+    CheckedSession.register_schemes(overwrite=True)
+
     if session_id is None:
         session_id = str(uuid.uuid4())
 

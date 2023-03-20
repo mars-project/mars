@@ -1206,7 +1206,7 @@ _initial_session = None
 def enter_current_session(func: Callable):
     @functools.wraps(func)
     def wrapped(cls, ctx, op):
-        from .deploy.oscar.session import AbstractSession, get_default_session
+        from .session import AbstractSession, get_default_session
 
         global _enter_counter, _initial_session
         # skip in some test cases

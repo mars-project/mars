@@ -24,6 +24,7 @@ import pytest
 from .... import tensor as mt
 from .... import dataframe as md
 from ....oscar.errors import ReconstructWorkerError
+from ....session import get_default_session, new_session
 from ....tests.core import require_ray, mock, DICT_NOT_EMPTY
 from ....utils import lazy_import
 from ..ray import (
@@ -31,7 +32,6 @@ from ..ray import (
     ClusterStateActor,
     new_cluster,
 )
-from ..session import get_default_session, new_session
 from ..tests import test_local
 from .modules.utils import (  # noqa: F401  # pylint: disable=unused-variable
     cleanup_third_party_modules_output,

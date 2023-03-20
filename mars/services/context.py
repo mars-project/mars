@@ -85,7 +85,7 @@ class ThreadedServiceContext(Context):
 
     @implements(Context.get_current_session)
     def get_current_session(self) -> SessionType:
-        from ..deploy.oscar.session import new_session
+        from ..session import new_session
 
         return new_session(
             self.supervisor_address, self.session_id, new=False, default=False

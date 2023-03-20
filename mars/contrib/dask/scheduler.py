@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List, Tuple, Union
+
 from dask.core import istask, ishashable
 
-from typing import List, Tuple, Union
-from .utils import reduce
 from ...remote import spawn
-from ...deploy.oscar.session import execute
+from ...session import execute
+from .utils import reduce
 
 
 def mars_scheduler(dsk: dict, keys: Union[List[List[str]], List[str]]):

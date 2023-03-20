@@ -38,8 +38,8 @@ class DecrefRunner:
         self._decref_thread.start()
 
     def _thread_body(self):
-        from ...deploy.oscar.session import SyncSession
         from ...oscar.errors import ActorNotExist
+        from ...session import SyncSession
 
         while True:
             key, session_ref, fut = self._queue.get()
@@ -130,7 +130,7 @@ _cleaner = _TileableDataCleaner()
 
 
 def _get_session(executable: "_ExecutableMixin", session: SessionType = None):
-    from ...deploy.oscar.session import get_default_session
+    from ...session import get_default_session
 
     # if session is not specified, use default session
     if session is None:
@@ -144,7 +144,7 @@ class _ExecutableMixin:
     _executed_sessions: List[SessionType]
 
     def execute(self, session: SessionType = None, **kw):
-        from ...deploy.oscar.session import execute
+        from ...session import execute
 
         session = _get_session(self, session)
         return execute(self, session=session, **kw)
@@ -160,7 +160,7 @@ class _ExecutableMixin:
             )
 
     def _fetch(self, session: SessionType = None, **kw):
-        from ...deploy.oscar.session import fetch
+        from ...session import fetch
 
         session = _get_session(self, session)
         self._check_session(session, "fetch")
@@ -175,14 +175,14 @@ class _ExecutableMixin:
         offsets: List[int] = None,
         sizes: List[int] = None,
     ):
-        from ...deploy.oscar.session import fetch_log
+        from ...session import fetch_log
 
         session = _get_session(self, session)
         self._check_session(session, "fetch_log")
         return fetch_log(self, session=session, offsets=offsets, sizes=sizes)[0]
 
     def _fetch_infos(self, fields=None, session=None, **kw):
-        from ...deploy.oscar.session import fetch_infos
+        from ...session import fetch_infos
 
         session = _get_session(self, session)
         self._check_session(session, "fetch_infos")
@@ -207,7 +207,7 @@ class _ExecuteAndFetchMixin:
     __slots__ = ()
 
     def _execute_and_fetch(self, session: SessionType = None, **kw):
-        from ...deploy.oscar.session import ExecutionInfo, SyncSession, fetch
+        from ...session import ExecutionInfo, SyncSession, fetch
 
         session = _get_session(self, session)
         fetch_kwargs = kw.pop("fetch_kwargs", dict())
@@ -273,7 +273,7 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
         return "%s(%s)" % (self._raw_type.__name__, ", ".join(items))
 
     def execute(self, session: SessionType = None, **kw):
-        from ...deploy.oscar.session import execute
+        from ...session import execute
 
         if len(self) == 0:
             return self
@@ -290,14 +290,14 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
             return ret
 
     def _fetch(self, session: SessionType = None, **kw):
-        from ...deploy.oscar.session import fetch
+        from ...session import fetch
 
         session = _get_session(self, session)
         self._check_session(session, "fetch")
         return fetch(*self, session=session, **kw)
 
     def _fetch_infos(self, fields=None, session=None, **kw):
-        from ...deploy.oscar.session import fetch_infos
+        from ...session import fetch_infos
 
         session = _get_session(self, session)
         self._check_session(session, "fetch_infos")
@@ -321,7 +321,7 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
         offsets: List[int] = None,
         sizes: List[int] = None,
     ):
-        from ...deploy.oscar.session import fetch_log
+        from ...session import fetch_log
 
         if len(self) == 0:
             return []

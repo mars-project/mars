@@ -314,14 +314,14 @@ def series_drop_duplicates(series, keep="first", inplace=False, method="auto"):
     Generate a Series with duplicated entries.
 
     >>> import mars.dataframe as md
-    >>> s = md.Series(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'],
+    >>> s = md.Series(['lame', 'cow', 'lame', 'beetle', 'lame', 'hippo'],
     ...               name='animal')
     >>> s.execute()
-    0      lama
+    0      lame
     1       cow
-    2      lama
+    2      lame
     3    beetle
-    4      lama
+    4      lame
     5     hippo
     Name: animal, dtype: object
 
@@ -330,7 +330,7 @@ def series_drop_duplicates(series, keep="first", inplace=False, method="auto"):
     set of duplicated entries. The default value of keep is 'first'.
 
     >>> s.drop_duplicates().execute()
-    0      lama
+    0      lame
     1       cow
     3    beetle
     5     hippo
@@ -342,7 +342,7 @@ def series_drop_duplicates(series, keep="first", inplace=False, method="auto"):
     >>> s.drop_duplicates(keep='last').execute()
     1       cow
     3    beetle
-    4      lama
+    4      lame
     5     hippo
     Name: animal, dtype: object
 
@@ -393,20 +393,20 @@ def index_drop_duplicates(index, keep="first", method="auto"):
 
     >>> import mars.dataframe as md
 
-    >>> idx = md.Index(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'])
+    >>> idx = md.Index(['lame', 'cow', 'lame', 'beetle', 'lame', 'hippo'])
 
     The `keep` parameter controls  which duplicate values are removed.
     The value 'first' keeps the first occurrence for each
     set of duplicated entries. The default value of keep is 'first'.
 
     >>> idx.drop_duplicates(keep='first').execute()
-    Index(['lama', 'cow', 'beetle', 'hippo'], dtype='object')
+    Index(['lame', 'cow', 'beetle', 'hippo'], dtype='object')
 
     The value 'last' keeps the last occurrence for each set of duplicated
     entries.
 
     >>> idx.drop_duplicates(keep='last').execute()
-    Index(['cow', 'beetle', 'lama', 'hippo'], dtype='object')
+    Index(['cow', 'beetle', 'lame', 'hippo'], dtype='object')
 
     The value ``False`` discards all sets of duplicated entries.
 

@@ -37,7 +37,6 @@ from ...core.context import Context
 from ...core.operand import OperandStage
 from ...dataframe.core import DATAFRAME_TYPE
 from ...dataframe.utils import parse_index
-from ...deploy.oscar.session import execute
 from ...serialization.serializables import (
     AnyField,
     BoolField,
@@ -50,6 +49,7 @@ from ...serialization.serializables import (
     ReferenceField,
     FieldTypes,
 )
+from ...session import execute
 from ...tensor.core import TENSOR_CHUNK_TYPE
 from ...tensor.random import RandomStateField
 from ...tensor.utils import gen_random_seeds

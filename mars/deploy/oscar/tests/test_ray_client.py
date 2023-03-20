@@ -19,9 +19,9 @@ import threading
 
 import pytest
 
-from .test_ray_cluster_standalone import new_ray_session_test
 from ....tests.core import require_ray
 from ....utils import lazy_import
+from .test_ray_cluster_standalone import new_ray_session_test
 
 ray = lazy_import("ray")
 

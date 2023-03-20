@@ -30,6 +30,7 @@ from ...oscar.backends.router import Router
 from ...resource import cpu_count, cuda_count, mem_total
 from ...services import NodeRole
 from ...services.task.execution.api import ExecutionConfig
+from ...session import AbstractSession, _new_session, ensure_isolation_created
 from ...typing import ClusterType, ClientType
 from ..utils import get_third_party_modules_from_config, load_config
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
@@ -39,7 +40,6 @@ from .service import (
     stop_supervisor,
     stop_worker,
 )
-from .session import AbstractSession, _new_session, ensure_isolation_created
 
 logger = logging.getLogger(__name__)
 

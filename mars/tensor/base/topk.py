@@ -492,11 +492,11 @@ def _topk_helper(
                     ap = _gen_indices(a.shape, axis, xp)
             if sorted:
                 # sort then reverse
-                ags = xp.argsort(av, axis=axis, **kw)[
+                argsort_result = xp.argsort(av, axis=axis, **kw)[
                     base_slc + (slice(None, None, -1),)
                 ]
-                ap = xp.take_along_axis(ap, ags, axis)
-                av = xp.take_along_axis(av, ags, axis)
+                ap = xp.take_along_axis(ap, argsort_result, axis)
+                av = xp.take_along_axis(av, argsort_result, axis)
         else:
             if k < size:
                 ap = xp.argpartition(a, k, axis=axis, **kw)[base_slc + (slice(k),)]
@@ -510,9 +510,9 @@ def _topk_helper(
                 else:
                     ap = _gen_indices(a.shape, axis, xp)
             if sorted:
-                ags = xp.argsort(av, axis=axis, **kw)
-                ap = xp.take_along_axis(ap, ags, axis)
-                av = xp.take_along_axis(av, ags, axis)
+                argsort_result = xp.argsort(av, axis=axis, **kw)
+                ap = xp.take_along_axis(ap, argsort_result, axis)
+                av = xp.take_along_axis(av, argsort_result, axis)
         if axis_offset:
             ap = ap + axis_offset
     else:

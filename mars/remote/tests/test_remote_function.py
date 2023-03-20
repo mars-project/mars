@@ -23,7 +23,7 @@ from ... import get_context
 from ... import oscar as mo
 from ... import tensor as mt
 from ...core import tile
-from ...deploy.oscar.session import get_default_session
+from ...session import get_default_session
 from ...learn.utils import shuffle
 from ...lib.mmh3 import hash as mmh3_hash
 from .. import spawn, ExecutableTuple

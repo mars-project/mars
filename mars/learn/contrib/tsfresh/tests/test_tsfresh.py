@@ -23,7 +23,7 @@ try:
 except ImportError:
     tsfresh = None
 
-from .....deploy.oscar.session import new_session, get_default_session
+from .....session import new_session, get_default_session
 from .. import MarsDistributor
 
 
