@@ -324,9 +324,11 @@ class ClusterStateActor(mo.StatelessActor):
 async def new_cluster(
     cluster_name: str = None,
     supervisor_cpu: int = 1,
+    supervisor_gpu: Union[int, float] = 0,
     supervisor_mem: int = 1 * 1024**3,
     worker_num: int = 1,
     worker_cpu: int = 2,
+    worker_gpu: Union[int, float] = 0,
     worker_mem: int = 2 * 1024**3,
     backend: str = None,
     config: Union[str, Dict] = None,
@@ -346,9 +348,11 @@ async def new_cluster(
     cluster = RayCluster(
         cluster_name,
         supervisor_cpu,
+        supervisor_gpu,
         supervisor_mem,
         worker_num,
         worker_cpu,
+        worker_gpu,
         worker_mem,
         backend,
         config,
