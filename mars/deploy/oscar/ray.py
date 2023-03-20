@@ -496,6 +496,7 @@ class RayCluster:
                     n_cpu=self._worker_num * self._worker_cpu,
                     mem_bytes=self._worker_mem,
                     subtask_num_cpus=self._worker_cpu,
+                    subtask_num_gpus=self._worker_gpu,
                     subtask_memory=self._worker_mem,
                 )
             )
