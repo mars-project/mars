@@ -608,7 +608,9 @@ class RayCluster:
             create_supervisor_actor_pool(
                 self.supervisor_address,
                 n_process=supervisor_sub_pool_num,
+                # NOTE: why set `main_pool_cpus` as 0?
                 main_pool_cpus=0,
+                main_pool_gpus=supervisor_gpu,
                 sub_pool_cpus=0,
                 modules=supervisor_modules,
                 metrics=self._config.get("metrics", {}),
@@ -651,6 +653,7 @@ class RayCluster:
             "Start services on supervisor %s succeeds.", self.supervisor_address
         )
         await self._supervisor_pool.mark_service_ready.remote()
+        logger.info("supervisor pool on Ray is ready.")
         worker_pools = await asyncio.gather(*worker_pools)
         logger.info("Create %s workers succeeds.", len(worker_pools))
         await asyncio.gather(
