@@ -386,21 +386,23 @@ def get_device_info(dev_index: int) -> _cu_device_info:
     except KeyError:
         pass
 
+    _init_nvml()
+    if _nvml_lib is None:
+        return None
     _init()
     if _init_pid is None:
         return None
 
     device = c_int()
     name_buf = create_string_buffer(100)
-    uuid_t = _CUuuid_t()
     cc_major = c_int()
     cc_minor = c_int()
     cores = c_int()
     threads_per_core = c_int()
 
+    uuid_b = get_index_and_uuid(dev_index).uuid
     _cu_check_error(_cuda_lib.cuDeviceGet(byref(device), c_int(dev_index)))
     _cu_check_error(_cuda_lib.cuDeviceGetName(name_buf, len(name_buf), device))
-    _cu_check_error(_cuda_lib.cuDeviceGetUuid(byref(uuid_t), device))
     _cu_check_error(
         _cuda_lib.cuDeviceComputeCapability(byref(cc_major), byref(cc_minor), device)
     )
@@ -426,7 +428,7 @@ def get_device_info(dev_index: int) -> _cu_device_info:
 
     info = _device_infos[dev_index] = _cu_device_info(
         index=real_dev_index,
-        uuid=uuid.UUID(bytes=uuid_t.bytes),
+        uuid=uuid_b,
         name=name_buf.value.decode(),
         multiprocessors=cores.value,
         cuda_cores=cores.value
@@ -448,11 +450,9 @@ def get_device_status(dev_index: int) -> _nvml_device_status:
 
     dev_uuid = get_device_info(dev_index).uuid
 
-    uuid_str = ("GPU-" + str(dev_uuid)).encode()
-
     if not _is_wsl:
         _nvml_check_error(
-            _nvml_lib.nvmlDeviceGetHandleByUUID(uuid_str, byref(c_device))
+            _nvml_lib.nvmlDeviceGetHandleByUUID(dev_uuid, byref(c_device))
         )
 
         _nvml_check_error(
