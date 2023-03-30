@@ -15,9 +15,9 @@
 from dask import is_dask_collection, optimize
 from dask.bag import Bag
 
+from ...remote import spawn
 from .scheduler import mars_dask_get
 from .utils import reduce
-from ...remote import spawn
 
 
 def convert_dask_collection(dc):

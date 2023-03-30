@@ -15,7 +15,7 @@
 import concurrent.futures
 
 from .... import remote
-from ....deploy.oscar.session import get_default_session, new_session
+from ....session import get_default_session, new_session
 
 try:
     from joblib.parallel import (

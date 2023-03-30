@@ -427,7 +427,7 @@ def series_duplicated(series, keep="first", method="auto"):
 
     >>> import mars.dataframe as md
 
-    >>> animals = md.Series(['lama', 'cow', 'lama', 'beetle', 'lama'])
+    >>> animals = md.Series(['lame', 'cow', 'lame', 'beetle', 'lame'])
     >>> animals.duplicated().execute()
     0    False
     1    False
@@ -510,7 +510,7 @@ def index_duplicated(index, keep="first"):
 
     >>> import mars.dataframe as md
 
-    >>> idx = md.Index(['lama', 'cow', 'lama', 'beetle', 'lama'])
+    >>> idx = md.Index(['lame', 'cow', 'lame', 'beetle', 'lame'])
     >>> idx.duplicated().execute()
     array([False, False,  True, False,  True])
 

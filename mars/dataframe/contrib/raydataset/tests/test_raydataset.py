@@ -20,7 +20,7 @@ import pytest
 from ..... import dataframe as md
 from .....conftest import MARS_CI_BACKEND
 from .....deploy.oscar.ray import new_cluster
-from .....deploy.oscar.session import new_session
+from .....session import new_session
 from .....tests.core import require_ray
 from .....utils import lazy_import
 from ....contrib import raydataset as mdd

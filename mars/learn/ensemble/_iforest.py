@@ -25,8 +25,8 @@ from sklearn.utils import (
 )
 
 from ... import tensor as mt
-from ...deploy.oscar.session import execute
 from ...lib.sparse import issparse
+from ...session import execute
 from ...tensor.utils import check_random_state
 from ..utils import get_chunk_n_rows, convert_to_tensor_or_dataframe
 from ..utils.validation import _num_samples, check_is_fitted

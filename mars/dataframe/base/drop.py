@@ -308,7 +308,7 @@ def df_drop(
 
     Drop columns and/or rows of MultiIndex DataFrame
 
-    >>> midx = pd.MultiIndex(levels=[['lama', 'cow', 'falcon'],
+    >>> midx = pd.MultiIndex(levels=[['lame', 'cow', 'falcon'],
     ...                              ['speed', 'weight', 'length']],
     ...                      codes=[[0, 0, 0, 1, 1, 1, 2, 2, 2],
     ...                             [0, 1, 2, 0, 1, 2, 0, 1, 2]])
@@ -318,7 +318,7 @@ def df_drop(
     ...                         [1, 0.8], [0.3, 0.2]])
     >>> df.execute()
                     big     small
-    lama    speed   45.0    30.0
+    lame    speed   45.0    30.0
             weight  200.0   100.0
             length  1.5     1.0
     cow     speed   30.0    20.0
@@ -330,7 +330,7 @@ def df_drop(
 
     >>> df.drop(index='cow', columns='small').execute()
                     big
-    lama    speed   45.0
+    lame    speed   45.0
             weight  200.0
             length  1.5
     falcon  speed   320.0
@@ -339,7 +339,7 @@ def df_drop(
 
     >>> df.drop(index='length', level=1).execute()
                     big     small
-    lama    speed   45.0    30.0
+    lame    speed   45.0    30.0
             weight  200.0   100.0
     cow     speed   30.0    20.0
             weight  250.0   150.0
@@ -483,14 +483,14 @@ def series_drop(
 
     Drop 2nd level label in MultiIndex Series
 
-    >>> midx = pd.MultiIndex(levels=[['lama', 'cow', 'falcon'],
+    >>> midx = pd.MultiIndex(levels=[['lame', 'cow', 'falcon'],
     ...                              ['speed', 'weight', 'length']],
     ...                      codes=[[0, 0, 0, 1, 1, 1, 2, 2, 2],
     ...                             [0, 1, 2, 0, 1, 2, 0, 1, 2]])
     >>> s = md.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
     ...               index=midx)
     >>> s.execute()
-    lama    speed      45.0
+    lame    speed      45.0
             weight    200.0
             length      1.2
     cow     speed      30.0
@@ -502,7 +502,7 @@ def series_drop(
     dtype: float64
 
     >>> s.drop(labels='weight', level=1).execute()
-    lama    speed      45.0
+    lame    speed      45.0
             length      1.2
     cow     speed      30.0
             length      1.5

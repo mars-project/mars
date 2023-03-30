@@ -30,9 +30,9 @@ from ....services.tests.fault_injection_manager import (
     FaultPosition,
     FaultType,
 )
+from ....session import get_default_async_session
 from ....tensor.base.psrs import PSRSConcatPivot
 from ..local import new_cluster
-from ..session import get_default_async_session
 
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "fault_injection_config.yml")
 RERUN_SUBTASK_CONFIG_FILE = os.path.join(

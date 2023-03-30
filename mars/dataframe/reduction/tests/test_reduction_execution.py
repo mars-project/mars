@@ -25,7 +25,7 @@ except ImportError:  # pragma: no cover
 
 from .... import dataframe as md
 from ....config import option_context
-from ....deploy.oscar.session import get_default_session
+from ....session import get_default_session
 from ....tests.core import require_cudf, require_cupy
 from ....utils import lazy_import, pd_release_version
 from ... import CustomReduction, NamedAgg

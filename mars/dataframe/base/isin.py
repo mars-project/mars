@@ -291,9 +291,9 @@ def series_isin(elements, values):
     Examples
     --------
     >>> import mars.dataframe as md
-    >>> s = md.Series(['lama', 'cow', 'lama', 'beetle', 'lama',
+    >>> s = md.Series(['lame', 'cow', 'lame', 'beetle', 'lame',
     ...                'hippo'], name='animal')
-    >>> s.isin(['cow', 'lama']).execute()
+    >>> s.isin(['cow', 'lame']).execute()
     0     True
     1     True
     2     True
@@ -302,10 +302,10 @@ def series_isin(elements, values):
     5    False
     Name: animal, dtype: bool
 
-    Passing a single string as ``s.isin('lama')`` will raise an error. Use
+    Passing a single string as ``s.isin('lame')`` will raise an error. Use
     a list of one element instead:
 
-    >>> s.isin(['lama']).execute()
+    >>> s.isin(['lame']).execute()
     0     True
     1    False
     2     True

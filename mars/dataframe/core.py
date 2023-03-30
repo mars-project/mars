@@ -57,6 +57,8 @@ from ..serialization.serializables import (
     IntervalArrayField,
     DictField,
 )
+from ..session import get_default_session
+from ..tensor import statistics
 from ..utils import (
     on_serialize_shape,
     on_deserialize_shape,
@@ -66,8 +68,6 @@ from ..utils import (
     estimate_pandas_size,
     calc_nsplits,
 )
-from ..deploy.oscar.session import get_default_session
-from ..tensor import statistics
 from .utils import fetch_corner_data, ReprSeries, parse_index, merge_index_value
 
 
