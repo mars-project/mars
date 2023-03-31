@@ -178,7 +178,7 @@ def execute_subtask(
     """
     init_metrics("ray")
     started_subtask_number.record(1)
-    ray_task_id = ray.get_runtime_context().task_id
+    ray_task_id = ray.get_runtime_context().get_task_id()
     subtask_chunk_graph = deserialize(*subtask_chunk_graph)
     logger.info("Start subtask: %s, ray task id: %s.", subtask_id, ray_task_id)
     # Optimize chunk graph.
