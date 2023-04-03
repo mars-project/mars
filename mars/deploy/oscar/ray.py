@@ -145,7 +145,7 @@ class ClusterStateActor(mo.StatelessActor):
             "numa-0": Resource(
                 num_cpus=self._worker_cpu,
                 num_gpus=self._worker_gpu,
-                mem_bytes=self._worker_mem
+                mem_bytes=self._worker_mem,
             )
         }
         self._worker_modules = get_third_party_modules_from_config(
@@ -153,11 +153,11 @@ class ClusterStateActor(mo.StatelessActor):
         )
 
     async def request_worker(
-            self,
-            worker_cpu: int = None,
-            worker_gpu: int = None,
-            worker_mem: int = None,
-            timeout: int = None
+        self,
+        worker_cpu: int = None,
+        worker_gpu: int = None,
+        worker_mem: int = None,
+        timeout: int = None,
     ) -> Optional[str]:
         worker_cpu = worker_cpu or self._worker_cpu
         worker_gpu = worker_cpu or self._worker_gpu
@@ -169,9 +169,7 @@ class ClusterStateActor(mo.StatelessActor):
         }
         band_to_resource = {
             "numa-0": Resource(
-                num_cpus=worker_cpu,
-                num_gpus=worker_gpu,
-                mem_bytes=worker_mem
+                num_cpus=worker_cpu, num_gpus=worker_gpu, mem_bytes=worker_mem
             )
         }
         start_time = time.time()
@@ -624,7 +622,7 @@ class RayCluster:
                         "numa-0": Resource(
                             num_cpus=worker_cpu,
                             num_gpus=worker_gpu,
-                            mem_bytes=self._worker_mem
+                            mem_bytes=self._worker_mem,
                         )
                     },
                     modules=get_third_party_modules_from_config(
@@ -642,10 +640,7 @@ class RayCluster:
         )
         cluster_state_ref = self._cluster_backend.get_cluster_state_ref()
         await self._cluster_backend.get_cluster_state_ref().set_config(
-            worker_cpu,
-            worker_gpu,
-            self._worker_mem,
-            self._config
+            worker_cpu, worker_gpu, self._worker_mem, self._config
         )
         # start service
         await start_supervisor(self.supervisor_address, config=self._config)
