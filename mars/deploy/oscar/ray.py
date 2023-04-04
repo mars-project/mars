@@ -160,7 +160,7 @@ class ClusterStateActor(mo.StatelessActor):
         timeout: int = None,
     ) -> Optional[str]:
         worker_cpu = worker_cpu or self._worker_cpu
-        worker_gpu = worker_cpu or self._worker_gpu
+        worker_gpu = worker_gpu or self._worker_gpu
         worker_mem = worker_mem or self._worker_mem
         bundle = {
             "CPU": worker_cpu,
