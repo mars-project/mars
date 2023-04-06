@@ -53,6 +53,7 @@ class RayActorBackend(BaseActorBackend):
         assert pool_addresses[0] == address
         pg = get_placement_group(pg_name) if pg_name else None
         num_cpus = kwargs.get("main_pool_cpus", 0)
+        num_gpus = kwargs.get("main_pool_gpus", 0)
         sub_pools = {
             sub_pool_address: RayMainActorPool.create_sub_pool(
                 address, sub_pool_address
@@ -63,6 +64,7 @@ class RayActorBackend(BaseActorBackend):
             ray.remote(RayMainPool)
             .options(
                 num_cpus=num_cpus,
+                num_gpus=num_gpus,
                 name=address,
                 max_concurrency=10000000,  # By default, 1000 tasks can be running concurrently.
                 max_restarts=-1,  # Auto restarts by ray

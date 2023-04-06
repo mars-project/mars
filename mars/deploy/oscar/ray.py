@@ -121,8 +121,9 @@ class RayClusterBackend(AbstractClusterBackend):
 
 class ClusterStateActor(mo.StatelessActor):
     def __init__(self):
-        self._worker_cpu, self._worker_mem, self._config = None, None, None
-        self._pg_name, self._band_to_resource, self._worker_modules = None, None, None
+        self._worker_cpu = self._worker_gpu = None
+        self._worker_mem = self._config = None
+        self._pg_name = self._band_to_resource = self._worker_modules = None
         self._pg_counter = itertools.count()
         self._worker_count = 0
         self._workers = {}
@@ -132,31 +133,44 @@ class ClusterStateActor(mo.StatelessActor):
     async def __post_create__(self):
         self._pg_name, _, _ = process_address_to_placement(self.address)
 
-    def set_config(self, worker_cpu, worker_mem, config):
-        self._worker_cpu, self._worker_mem, self._config = (
+    def set_config(self, worker_cpu, worker_gpu, worker_mem, config):
+        self._worker_cpu, self._worker_gpu, self._worker_mem, self._config = (
             worker_cpu,
+            worker_gpu,
             worker_mem,
             config,
         )
         # TODO(chaokunyang) Support gpu
         self._band_to_resource = {
-            "numa-0": Resource(num_cpus=self._worker_cpu, mem_bytes=self._worker_mem)
+            "numa-0": Resource(
+                num_cpus=self._worker_cpu,
+                num_gpus=self._worker_gpu,
+                mem_bytes=self._worker_mem,
+            )
         }
         self._worker_modules = get_third_party_modules_from_config(
             self._config, NodeRole.WORKER
         )
 
     async def request_worker(
-        self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None
+        self,
+        worker_cpu: int = None,
+        worker_gpu: int = None,
+        worker_mem: int = None,
+        timeout: int = None,
     ) -> Optional[str]:
         worker_cpu = worker_cpu or self._worker_cpu
+        worker_gpu = worker_gpu or self._worker_gpu
         worker_mem = worker_mem or self._worker_mem
         bundle = {
             "CPU": worker_cpu,
+            "GPU": worker_gpu,
             # "memory": worker_mem or self._worker_mem
         }
         band_to_resource = {
-            "numa-0": Resource(num_cpus=worker_cpu, mem_bytes=worker_mem)
+            "numa-0": Resource(
+                num_cpus=worker_cpu, num_gpus=worker_gpu, mem_bytes=worker_mem
+            )
         }
         start_time = time.time()
         logger.info("Start to request worker with resource %s.", bundle)
@@ -308,9 +322,11 @@ class ClusterStateActor(mo.StatelessActor):
 async def new_cluster(
     cluster_name: str = None,
     supervisor_cpu: int = 1,
+    supervisor_gpu: Union[int, float] = 0,
     supervisor_mem: int = 1 * 1024**3,
     worker_num: int = 1,
     worker_cpu: int = 2,
+    worker_gpu: Union[int, float] = 0,
     worker_mem: int = 2 * 1024**3,
     backend: str = None,
     config: Union[str, Dict] = None,
@@ -330,9 +346,11 @@ async def new_cluster(
     cluster = RayCluster(
         cluster_name,
         supervisor_cpu,
+        supervisor_gpu,
         supervisor_mem,
         worker_num,
         worker_cpu,
+        worker_gpu,
         worker_mem,
         backend,
         config,
@@ -407,9 +425,11 @@ class RayCluster:
         self,
         cluster_name: str,
         supervisor_cpu: Union[int, float] = 1,
+        supervisor_gpu: Union[int, float] = 0,
         supervisor_mem: int = 1 * 1024**3,
         worker_num: int = 1,
         worker_cpu: Union[int, float] = 2,
+        worker_gpu: Union[int, float] = 0,
         worker_mem: int = 2 * 1024**3,
         backend: str = None,
         config: Union[str, Dict] = None,
@@ -419,10 +439,12 @@ class RayCluster:
         init_extension_entrypoints()
         self._cluster_name = cluster_name
         self._supervisor_cpu = supervisor_cpu
+        self._supervisor_gpu = supervisor_gpu
         self._supervisor_mem = supervisor_mem
         self._n_supervisor_process = n_supervisor_process
         self._worker_num = worker_num
         self._worker_cpu = worker_cpu
+        self._worker_gpu = worker_gpu
         self._worker_mem = worker_mem
         self.backend = backend
         # load config file to dict.
@@ -449,14 +471,19 @@ class RayCluster:
         execution_config = ExecutionConfig.from_config(
             self._config, backend=self.backend
         )
+        # if the backend field is mars, then enter the Mars on Ray mode;
+        # otherwise if it is ray, then enter into the Mars on Ray-DAG mode.
         self.backend = execution_config.backend
         if self.backend == "mars":
             await self.start_oscar(
                 self._n_supervisor_process,
                 self._supervisor_cpu,
+                self._supervisor_gpu,
                 self._supervisor_mem,
+                # in Mars on Ray mode, SubPools are needed.
                 self._worker_num,
                 self._worker_cpu,
+                self._worker_gpu,
                 self._worker_mem,
             )
         elif self.backend == "ray":
@@ -467,6 +494,7 @@ class RayCluster:
                     n_cpu=self._worker_num * self._worker_cpu,
                     mem_bytes=self._worker_mem,
                     subtask_num_cpus=self._worker_cpu,
+                    subtask_num_gpus=self._worker_gpu,
                     subtask_memory=self._worker_mem,
                 )
             )
@@ -474,7 +502,10 @@ class RayCluster:
             await self.start_oscar(
                 self._n_supervisor_process,
                 self._supervisor_cpu,
+                self._supervisor_gpu,
                 self._supervisor_mem,
+                # In Ray DAG mode, SubPools are not needed.
+                0,
                 0,
                 0,
                 0,
@@ -486,9 +517,11 @@ class RayCluster:
         self,
         n_supervisor_process,
         supervisor_cpu,
+        supervisor_gpu,
         supervisor_mem,
         worker_num,
         worker_cpu,
+        worker_gpu,
         worker_mem,
     ):
         logger.info("Start cluster with config %s", self._config)
@@ -523,6 +556,7 @@ class RayCluster:
         self._config["cluster"]["lookup_address"] = self.supervisor_address
         address_to_resources[node_placement_to_address(self._cluster_name, 0)] = {
             "CPU": supervisor_cpu,
+            "GPU": supervisor_gpu,
             # "memory": supervisor_mem,
         }
         worker_addresses = []
@@ -537,6 +571,7 @@ class RayCluster:
                 )
                 address_to_resources[worker_node_address] = {
                     "CPU": worker_cpu,
+                    "GPU": worker_gpu,
                     # "memory": self._worker_mem,
                 }
         else:
@@ -553,6 +588,7 @@ class RayCluster:
                 )
                 address_to_resources[worker_node_address] = {
                     "CPU": worker_cpu,
+                    "GPU": worker_gpu,
                     # "memory": self._worker_mem,
                 }
         mo.setup_cluster(address_to_resources)
@@ -570,7 +606,9 @@ class RayCluster:
             create_supervisor_actor_pool(
                 self.supervisor_address,
                 n_process=supervisor_sub_pool_num,
+                # NOTE: why set `main_pool_cpus` as 0?
                 main_pool_cpus=0,
+                main_pool_gpus=supervisor_gpu,
                 sub_pool_cpus=0,
                 modules=supervisor_modules,
                 metrics=self._config.get("metrics", {}),
@@ -582,7 +620,9 @@ class RayCluster:
                     addr,
                     {
                         "numa-0": Resource(
-                            num_cpus=worker_cpu, mem_bytes=self._worker_mem
+                            num_cpus=worker_cpu,
+                            num_gpus=worker_gpu,
+                            mem_bytes=self._worker_mem,
                         )
                     },
                     modules=get_third_party_modules_from_config(
@@ -600,7 +640,7 @@ class RayCluster:
         )
         cluster_state_ref = self._cluster_backend.get_cluster_state_ref()
         await self._cluster_backend.get_cluster_state_ref().set_config(
-            worker_cpu, self._worker_mem, self._config
+            worker_cpu, worker_gpu, self._worker_mem, self._config
         )
         # start service
         await start_supervisor(self.supervisor_address, config=self._config)
@@ -608,6 +648,7 @@ class RayCluster:
             "Start services on supervisor %s succeeds.", self.supervisor_address
         )
         await self._supervisor_pool.mark_service_ready.remote()
+        logger.info("supervisor pool on Ray is ready.")
         worker_pools = await asyncio.gather(*worker_pools)
         logger.info("Create %s workers succeeds.", len(worker_pools))
         await asyncio.gather(

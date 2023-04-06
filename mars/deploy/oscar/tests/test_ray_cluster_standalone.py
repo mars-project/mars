@@ -126,7 +126,7 @@ async def test_new_ray_session_config(stop_ray):
     ) as mock_placement_group:
 
         def _wrap_original_placement_group(*args, **kwargs):
-            assert {"CPU": 3} in kwargs["bundles"]
+            assert {"CPU": 3, "GPU": 0} in kwargs["bundles"]
             return original_placement_group(*args, **kwargs)
 
         mock_placement_group.side_effect = _wrap_original_placement_group
