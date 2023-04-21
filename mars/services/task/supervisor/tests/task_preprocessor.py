@@ -180,11 +180,7 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
             map_reduce_id_to_infos=self.map_reduce_id_to_infos,
         )
         subtask_graph = analyzer.gen_subtask_graph()
-        results = set(
-            analyzer._chunk_to_copied[c]
-            for c in chunk_graph.results
-            if not isinstance(c.op, Fetch)
-        )
+        results = set(c for c in chunk_graph.results if not isinstance(c.op, Fetch))
         for subtask in subtask_graph:
             if subtask.extra_config is None:
                 subtask.extra_config = dict()

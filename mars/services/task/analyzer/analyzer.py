@@ -128,7 +128,6 @@ class GraphAnalyzer:
         if graph_assigner_cls is None:
             graph_assigner_cls = GraphAssigner
         self._graph_assigner_cls = graph_assigner_cls
-        self._chunk_to_copied = dict()
         self._logic_key_generator = LogicKeyGenerator()
 
     @classmethod
@@ -227,7 +226,6 @@ class GraphAnalyzer:
         result_chunks_set = set()
         chunk_graph = ChunkGraph(result_chunks)
         out_of_scope_chunks = []
-        chunk_to_copied = self._chunk_to_copied
         update_meta_chunks = []
         # subtask properties
         band = None
@@ -276,7 +274,7 @@ class GraphAnalyzer:
             build_fetch_index_to_chunks = dict()
             for i, inp_chunk in enumerate(chunk.inputs):
                 if inp_chunk in chunks_set:
-                    inp_chunks.append(chunk_to_copied[inp_chunk])
+                    inp_chunks.append(inp_chunk)
                 else:
                     build_fetch_index_to_chunks[i] = inp_chunk
                     inp_chunks.append(None)
@@ -289,20 +287,10 @@ class GraphAnalyzer:
                 inp_chunks[i] = fetch_chunk
             copied_op = chunk.op.copy()
             copied_op._key = chunk.op.key
-            out_chunks = [
-                c.data
-                for c in copied_op.new_chunks(
-                    inp_chunks, kws=[c.params.copy() for c in chunk.op.outputs]
-                )
-            ]
-            for src_chunk, out_chunk in zip(chunk.op.outputs, out_chunks):
-                processed.add(src_chunk)
-                out_chunk._key = src_chunk.key
+            for out_chunk in chunk.op.outputs:
+                processed.add(out_chunk)
                 chunk_graph.add_node(out_chunk)
-                # cannot be copied twice
-                assert src_chunk not in chunk_to_copied
-                chunk_to_copied[src_chunk] = out_chunk
-                if src_chunk in self._final_result_chunks_set:
+                if out_chunk in self._final_result_chunks_set:
                     if out_chunk not in result_chunks_set:
                         # add to result chunks
                         result_chunks.append(out_chunk)
@@ -330,18 +318,12 @@ class GraphAnalyzer:
         if out_of_scope_chunks:
             inp_subtasks = []
             for out_of_scope_chunk in out_of_scope_chunks:
-                copied_out_of_scope_chunk = chunk_to_copied[out_of_scope_chunk]
                 inp_subtask = chunk_to_subtask[out_of_scope_chunk]
-                if (
-                    copied_out_of_scope_chunk
-                    not in inp_subtask.chunk_graph.result_chunks
-                ):
+                if out_of_scope_chunk not in inp_subtask.chunk_graph.result_chunks:
                     # make sure the chunk that out of scope
                     # is in the input subtask's results,
                     # or the meta may be lost
-                    inp_subtask.chunk_graph.result_chunks.append(
-                        copied_out_of_scope_chunk
-                    )
+                    inp_subtask.chunk_graph.result_chunks.append(out_of_scope_chunk)
                 inp_subtasks.append(inp_subtask)
             depth = max(st.priority[0] for st in inp_subtasks) + 1
         else:
