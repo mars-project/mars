@@ -287,13 +287,9 @@ class GraphAnalyzer:
                 inp_chunks[i] = fetch_chunk
             for out_chunk in chunk.op.outputs:
                 # Note: `dtypes`, `index_value`, and `columns_value` are lazily
-                # initialized, so we should initialize them here.
-                if hasattr(out_chunk, "dtypes"):
-                    out_chunk.dtypes
-                if hasattr(out_chunk, "index_value"):
-                    out_chunk.index_value
-                if hasattr(out_chunk, "columns_value"):
-                    out_chunk.columns_value
+                # initialized, so we should call property `params` to initialize
+                # these fields.
+                out_chunk.params
                 processed.add(out_chunk)
                 chunk_graph.add_node(out_chunk)
                 if out_chunk in self._final_result_chunks_set:
