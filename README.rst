@@ -30,7 +30,7 @@ for development:
     pip install -e ".[dev]"
 
 More details about installing Mars can be found at
-`installation <https://docs.pymars.org/en/latest/installation/index.html>`_ section in
+`installation <https://mars-project.readthedocs.io/en/latest/installation/index.html>`_ section in
 Mars document.
 
 
@@ -140,12 +140,12 @@ Mars learn provides a familiar interface like scikit-learn.
 
 Mars learn also integrates with many libraries:
 
-- `TensorFlow <https://docs.pymars.org/en/latest/user_guide/learn/tensorflow.html>`_
-- `PyTorch <https://docs.pymars.org/en/latest/user_guide/learn/pytorch.html>`_
-- `XGBoost <https://docs.pymars.org/en/latest/user_guide/learn/xgboost.html>`_
-- `LightGBM <https://docs.pymars.org/en/latest/user_guide/learn/lightgbm.html>`_
-- `Joblib <https://docs.pymars.org/en/latest/user_guide/learn/joblib.html>`_
-- `Statsmodels <https://docs.pymars.org/en/latest/user_guide/learn/statsmodels.html>`_
+- `TensorFlow <https://mars-project.readthedocs.io//en/latest/user_guide/learn/tensorflow.html>`_
+- `PyTorch <https://mars-project.readthedocs.io/en/latest/user_guide/learn/pytorch.html>`_
+- `XGBoost <https://mars-project.readthedocs.io/en/latest/user_guide/learn/xgboost.html>`_
+- `LightGBM <https://mars-project.readthedocs.io/en/latest/user_guide/learn/lightgbm.html>`_
+- `Joblib <https://mars-project.readthedocs.io/en/latest/user_guide/learn/joblib.html>`_
+- `Statsmodels <https://mars-project.readthedocs.io/en/latest/user_guide/learn/statsmodels.html>`_
 
 Mars remote
 -----------
@@ -318,7 +318,7 @@ Refer to `Run on Yarn`_ for more information.
 Getting involved
 ----------------
 
-- Read `development guide <https://docs.pymars.org/en/latest/development/index.html>`_.
+- Read `development guide <https://mars-project.readthedocs.io/en/latest/development/index.html>`_.
 - Join our Slack workgroup: `Slack <https://join.slack.com/t/mars-computing/shared_invite/zt-17pw2cfua-NRb2H4vrg77pr9T4g3nQOQ>`_.
 - Join the mailing list: send an email to `mars-dev@googlegroups.com`_.
 - Please report bugs by submitting a `GitHub issue`_.
@@ -342,9 +342,9 @@ Thank you in advance for your contributions!
 .. _`mars-dev@googlegroups.com`: https://groups.google.com/forum/#!forum/mars-dev
 .. _`GitHub issue`: https://github.com/mars-project/mars/issues
 .. _`pull requests`: https://github.com/mars-project/mars/pulls
-.. _`Documentation`: https://docs.pymars.org
-.. _`中文文档`: https://docs.pymars.org/zh_CN/latest/
-.. _`Mars on Ray`: https://docs.pymars.org/en/latest/installation/ray.html
-.. _`Run on Kubernetes`: https://docs.pymars.org/en/latest/installation/kubernetes.html
-.. _`Run on Yarn`: https://docs.pymars.org/en/latest/installation/yarn.html
-.. _`DASK on Mars`: https://docs.pymars.org/en/latest/user_guide/contrib/dask.html
+.. _`Documentation`: https://mars-project.readthedocs.io
+.. _`中文文档`: https://mars-project.readthedocs.io/zh_CN/latest/
+.. _`Mars on Ray`: https://mars-project.readthedocs.io/en/latest/installation/ray.html
+.. _`Run on Kubernetes`: https://mars-project.readthedocs.io/en/latest/installation/kubernetes.html
+.. _`Run on Yarn`: https://mars-project.readthedocs.io/en/latest/installation/yarn.html
+.. _`DASK on Mars`: https://mars-project.readthedocs.io/en/latest/user_guide/contrib/dask.html
