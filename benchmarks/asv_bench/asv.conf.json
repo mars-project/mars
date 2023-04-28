@@ -7,7 +7,7 @@
     "project": "pymars",
 
     // The project's homepage
-    "project_url": "https://docs.pymars.org/",
+    "project_url": "https://mars-project.readthedocs.io/",
 
     // The URL or local path of the source code repository for the
     // project being benchmarked
