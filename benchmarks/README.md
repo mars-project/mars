@@ -48,7 +48,7 @@ This script assumes `tpch-dbgen` is in the same directory. If you downloaded it 
 
 ### Installation
 
-Follow the instructions [here](https://docs.pymars.org/en/latest/installation/index.html).
+Follow the instructions [here](https://mars-project.readthedocs.io/en/latest/installation/index.html).
 
 ### Running queries
 

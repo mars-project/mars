@@ -16,4 +16,4 @@ Fixes #xxxx
 ## Check code requirements
 
 - [ ] tests added / passed (if needed)
-- [ ] Ensure all linting tests pass, see [here](https://docs.pymars.org/en/latest/development/contributing.html#check-code-styles) for how to run them
+- [ ] Ensure all linting tests pass, see [here](https://mars-project.readthedocs.io/en/latest/development/contributing.html#check-code-styles) for how to run them

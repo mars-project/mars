@@ -112,7 +112,7 @@ export default function LeftMenu() {
           <ListItemText primary="Sessions" />
         </ListItem>
         {genSessionSubMenu()}
-        <ListItem button component="a" href="https://docs.pymars.org" target="_blank">
+        <ListItem button component="a" href="https://mars-project.readthedocs.io" target="_blank">
           <ListItemIcon>
             <DescriptionIcon />
           </ListItemIcon>
