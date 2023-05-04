@@ -110,7 +110,7 @@ jobs:
               pip install "pyarrow>=6.0.1"
             fi
             if [ -n "$RUN_DASK" ]; then
-              pip install dask[complete] mimesis scikit-learn
+              pip install "dask[complete]" "mimesis<9.0.0" scikit-learn
             fi
           fi
           conda list -n test
