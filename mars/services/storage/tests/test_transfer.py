@@ -62,16 +62,7 @@ async def actor_pools():
 async def create_actors(actor_pools):
     worker_pool_1, worker_pool_2 = actor_pools
 
-    if sys.platform == "darwin":
-        plasma_dir = "/tmp"
-    else:
-        plasma_dir = "/dev/shm"
-    plasma_setup_params = dict(
-        store_memory=5 * 1024 * 1024, plasma_directory=plasma_dir, check_dir_size=False
-    )
-    storage_configs = (
-        {"plasma": plasma_setup_params} if not _is_windows else {"shared_memory": {}}
-    )
+    storage_configs = {"shared_memory": {}}
 
     manager_ref1 = await mo.create_actor(
         StorageManagerActor,

@@ -1059,8 +1059,6 @@ async def speculative_cluster():
     config["scheduling"]["speculation"]["max_concurrent_run"] = 10
     config["scheduling"]["subtask_cancel_timeout"] = 0.1
     config["scheduling"]["enable_kill_slot"] = True
-    config["storage"]["backends"] = ["plasma"]
-    config["storage"]["plasma"]["store_memory"] = 10 * 1024 * 1024
     client = await new_cluster(
         config=config,
         n_worker=5,

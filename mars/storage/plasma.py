@@ -31,7 +31,7 @@ from .core import BufferWrappedFileObject, StorageFileObject
 from .errors import DataNotExist
 
 plasma = lazy_import("pyarrow.plasma", rename="plasma")
-if sys.platform.startswith("win"):
+if sys.platform.startswith("win") or pa.__version__ >= "12.0.0":
     plasma = None
 
 PAGE_SIZE = 64 * 1024
