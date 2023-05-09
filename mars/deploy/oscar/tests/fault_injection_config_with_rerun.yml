@@ -4,6 +4,3 @@ third_party_modules:
 scheduling:
   subtask_max_retries: 2
   subtask_max_reschedules: 2
-storage:
-  # shared-memory38 may lose object if the process crash after put success.
-  backends: [plasma]
