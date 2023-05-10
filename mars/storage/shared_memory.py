@@ -186,6 +186,9 @@ class SharedMemoryStorage(StorageBackend):
             if sys.platform == "win32":
                 # skip file not found error for windows
                 pass
+            elif sys.version_info[:2] < (3, 8):  # pragma: no cover
+                # skip file not found error in python 3.7.x or below
+                pass
             else:  # pragma: no cover
                 raise
         try:
