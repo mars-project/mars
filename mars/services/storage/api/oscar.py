@@ -330,21 +330,7 @@ class MockStorageAPI(StorageAPI):
 
         storage_configs = kwargs.get("storage_configs")
         if not storage_configs:
-            if sys.platform == "darwin":
-                plasma_dir = "/tmp"
-            else:
-                plasma_dir = "/dev/shm"
-            plasma_setup_params = dict(
-                store_memory=10 * 1024 * 1024,
-                plasma_directory=plasma_dir,
-                check_dir_size=False,
-            )
-            if _is_windows:
-                storage_configs = {"shared_memory": {}}
-            else:
-                storage_configs = {
-                    "plasma": plasma_setup_params,
-                }
+            storage_configs = {"shared_memory": {}}
 
         storage_handler_cls = kwargs.pop("storage_handler_cls", StorageHandlerActor)
         await mo.create_actor(

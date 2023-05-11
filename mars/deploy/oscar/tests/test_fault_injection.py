@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import os
+import sys
+
 import pytest
 import traceback
 import numpy as np
@@ -197,6 +199,10 @@ async def test_rerun_subtask(fault_cluster, fault_config):
         await info
 
 
+@pytest.mark.skipif(
+    sys.version_info[:2] < (3, 8),
+    reason="Skip due to the incompatibilities of shared memory.",
+)
 @pytest.mark.parametrize(
     "fault_cluster", [{"config": RERUN_SUBTASK_CONFIG_FILE}], indirect=True
 )

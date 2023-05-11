@@ -17,6 +17,7 @@ import tempfile
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pytest
 
 from .... import oscar as mo
@@ -47,7 +48,7 @@ else:
 plasma_setup_params = dict(
     store_memory=plasma_storage_size, plasma_directory=plasma_dir, check_dir_size=False
 )
-if not sys.platform.lower().startswith("win"):
+if not (sys.platform.lower().startswith("win") or pa.__version__ >= "12.0.0"):
     storage_configs.append({"plasma": plasma_setup_params})
 
 # ray backend

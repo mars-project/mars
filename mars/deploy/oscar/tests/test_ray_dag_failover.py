@@ -47,8 +47,6 @@ def test_basic_object_reconstruction(
     ray_large_cluster, reconstruction_enabled, stop_mars
 ):
     config = {
-        "num_heartbeats_timeout": 10,
-        "raylet_heartbeat_period_milliseconds": 200,
         "object_timeout_milliseconds": 200,
     }
     # Workaround to reset the config to the default value.
