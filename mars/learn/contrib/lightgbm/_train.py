@@ -211,8 +211,8 @@ class LGBMTrain(MergeDictOperand):
     @staticmethod
     def _get_data_chunks_workers(ctx, data):
         # data_chunk.inputs is concat, and concat's input is the co-allocated chunks
-        metas = ctx.get_chunks_meta([c.key for c in data.chunks], fields=["bands"])
-        return [m["bands"][0][0] for m in metas]
+        metas = ctx.get_chunks_meta([c.key for c in data.chunks], fields=["ip"])
+        return [m["ip"] for m in metas]
 
     @staticmethod
     def _concat_chunks_by_worker(chunks, chunk_workers):
@@ -357,9 +357,8 @@ class LGBMTrain(MergeDictOperand):
         # if model is trained, remove unsupported parameters
         params.pop("out_dtype_", None)
         worker_ports = ctx[op.worker_ports.key]
-        worker_ips = [worker.split(":", 1)[0] for worker in op.workers]
         worker_endpoints = [
-            f"{worker}:{port}" for worker, port in zip(worker_ips, worker_ports)
+            f"{worker}:{port}" for worker, port in zip(op.workers, worker_ports)
         ]
 
         params["machines"] = ",".join(worker_endpoints)

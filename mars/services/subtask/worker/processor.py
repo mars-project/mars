@@ -464,6 +464,10 @@ class SubtaskProcessor:
                         bands=[self._band],
                         chunk_key=chunk_key,
                         exclude_fields=["object_ref"],
+                        # Note: Why add the `ip` field?
+                        # lightgbm needs the machine addresses where the data are
+                        # to implement distributed learning.
+                        ip=self.result.execution_ip,
                     )
                 )
             # for supervisor, only save basic meta that is small like memory_size etc
