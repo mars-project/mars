@@ -119,7 +119,7 @@ class _MetricWrapper(AbstractMetric):
             self._metric.record(value, tags)
         elif not self._log_not_init_error:
             self._log_not_init_error = True
-            logger.warning(
+            logger.info(
                 "Metric is not initialized, please call `init_metrics()` before using metrics."
             )
 
