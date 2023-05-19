@@ -452,6 +452,10 @@ def train(params, train_set, eval_sets=None, **kwargs):
         kwds=kwargs,
     )
     ret = op().execute(session=session, **run_kwargs).fetch(session=session)
+    # Note: There may be multiple results if running on clusters, so we should
+    # combine the results if so.
+    if isinstance(ret, list):
+        ret = b"".join(ret)
 
     bst = pickle.loads(ret)
     evals_result.update(bst.evals_result_ or {})
