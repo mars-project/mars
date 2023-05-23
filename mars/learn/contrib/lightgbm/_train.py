@@ -214,7 +214,7 @@ class LGBMTrain(MergeDictOperand):
         metas = ctx.get_chunks_meta(
             [c.key for c in data.chunks], fields=["ip", "bands"]
         )
-        return {m["ip"]: m["bands"] for m in metas}
+        return {m["ip"]: m["bands"][0] for m in metas}
 
     @staticmethod
     def _concat_chunks_by_worker(chunks, chunk_workers):
@@ -275,6 +275,7 @@ class LGBMTrain(MergeDictOperand):
 
         out_chunks = []
         workers = list(workers)
+        bands = list(ip_to_bands.values())
         for worker_id, worker in enumerate(workers):
             chunk_op = op.copy().reset_key()
             chunk_op.expect_worker = ip_to_bands[worker]
@@ -301,7 +302,7 @@ class LGBMTrain(MergeDictOperand):
                         input_chunks.append(arg_chunk)
 
             worker_ports_chunk = (
-                yield from recursive_tile(collect_ports(workers, op.data))
+                yield from recursive_tile(collect_ports(bands, op.data))
             ).chunks[0]
             input_chunks.append(worker_ports_chunk)
 
