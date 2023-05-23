@@ -170,3 +170,64 @@ def test_local_classifier_from_to_parquet(setup):
         expected = classifier.predict(X)
         expected = np.stack([1 - expected, expected]).argmax(axis=0)
         np.testing.assert_array_equal(ret, expected)
+
+
+@pytest.mark.skipif(lightgbm is None, reason="LightGBM not installed")
+def test_classifier_on_multiple_machines(setup):
+    from .._train import LGBMTrain
+
+    class MockLGMBTrain(LGBMTrain):
+        @classmethod
+        def execute(cls, ctx, op: "LGBMTrain"):
+            super().execute(ctx, op)
+            # Note: There may be a list result when running on multiple
+            # machines, here just make an array of length 1 to simulate
+            # this scenario.
+            ctx[op.outputs[0].key] = [ctx[op.outputs[0].key]]
+
+    from ..core import LGBMModelType
+    from .._train import train
+    from ....utils import check_consistent_length
+
+    class MockLGBMClassifier(LGBMClassifier, lightgbm.LGBMClassifier):
+        def fit(
+            self,
+            X,
+            y,
+            sample_weight=None,
+            init_score=None,
+            eval_set=None,
+            eval_sample_weight=None,
+            eval_init_score=None,
+            session=None,
+            run_kwargs=None,
+            **kwargs,
+        ):
+            check_consistent_length(X, y, session=session, run_kwargs=run_kwargs)
+            params = self.get_params(True)
+            model = train(
+                params,
+                self._wrap_train_tuple(X, y, sample_weight, init_score),
+                eval_sets=self._wrap_eval_tuples(
+                    eval_set, eval_sample_weight, eval_init_score
+                ),
+                model_type=LGBMModelType.CLASSIFIER,
+                session=session,
+                run_kwargs=run_kwargs,
+                train_cls=MockLGMBTrain,
+                **kwargs,
+            )
+
+            self.set_params(**model.get_params())
+            self._copy_extra_params(model, self)
+            return self
+
+    y_data = (y * 10).astype(mt.int32)
+    classifier = MockLGBMClassifier(n_estimators=2)
+    classifier.fit(X, y_data, eval_set=[(X, y_data)], verbose=True)
+    prediction = classifier.predict(X)
+
+    assert prediction.ndim == 1
+    assert prediction.shape[0] == len(X)
+
+    assert isinstance(prediction, mt.Tensor)

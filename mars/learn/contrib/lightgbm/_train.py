@@ -436,7 +436,8 @@ def train(params, train_set, eval_sets=None, **kwargs):
         sample_weights.append(train_kw["sample_weight"])
         init_scores.append(train_kw["init_score"])
 
-    op = LGBMTrain(
+    train_cls = kwargs.pop("train_cls", LGBMTrain)
+    op = train_cls(
         params=params,
         data=datas[0],
         label=labels[0],
@@ -452,6 +453,10 @@ def train(params, train_set, eval_sets=None, **kwargs):
         kwds=kwargs,
     )
     ret = op().execute(session=session, **run_kwargs).fetch(session=session)
+    # Note: There may be multiple results if running on clusters, so we should
+    # combine the results if so.
+    if isinstance(ret, list):
+        ret = b"".join(ret)
 
     bst = pickle.loads(ret)
     evals_result.update(bst.evals_result_ or {})
