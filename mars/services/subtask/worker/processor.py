@@ -467,7 +467,9 @@ class SubtaskProcessor:
                         # Note: Why add the `ip` field?
                         # lightgbm needs the machine addresses where the data are
                         # to implement distributed learning.
-                        ip=self.result.execution_ip,
+                        ip=self.result.execution_ip
+                        if hasattr(self.result, "execution_ip")
+                        else None,
                     )
                 )
             # for supervisor, only save basic meta that is small like memory_size etc
