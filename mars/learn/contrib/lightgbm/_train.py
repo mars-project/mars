@@ -214,7 +214,7 @@ class LGBMTrain(MergeDictOperand):
         metas = ctx.get_chunks_meta(
             [c.key for c in data.chunks], fields=["ip", "bands"]
         )
-        return {m["ip"]: m["bands"][0] for m in metas}
+        return {m["ip"]: m["bands"][0][0] if m["bands"] else None for m in metas}
 
     @staticmethod
     def _concat_chunks_by_worker(chunks, chunk_workers):
@@ -232,14 +232,14 @@ class LGBMTrain(MergeDictOperand):
         data = op.data
         worker_to_args = defaultdict(dict)
 
-        # workers should be split to ip and band
-        ip_to_bands = cls._get_data_chunks_workers(ctx, data)
-        workers = ip_to_bands.keys()
+        # Note: Mars worker is band address, and LGBMTrain worker is machine ip.
+        ip_to_worker = cls._get_data_chunks_workers(ctx, data)
+        ips = ip_to_worker.keys()
 
         for arg in ["_data", "_label", "_sample_weight", "_init_score"]:
             if getattr(op, arg) is not None:
                 for worker, chunk in cls._concat_chunks_by_worker(
-                    getattr(op, arg).chunks, workers
+                    getattr(op, arg).chunks, ips
                 ).items():
                     worker_to_args[worker][arg] = chunk
 
@@ -249,8 +249,8 @@ class LGBMTrain(MergeDictOperand):
             ]
             extra_workers = reduce(
                 operator.or_, (set(w) for w in eval_workers_list)
-            ) - set(workers)
-            worker_remap = dict(zip(extra_workers, itertools.cycle(workers)))
+            ) - set(ips)
+            worker_remap = dict(zip(extra_workers, itertools.cycle(ips)))
             if worker_remap:
                 eval_workers_list = [
                     [worker_remap.get(w, w) for w in wl] for wl in eval_workers_list
@@ -274,11 +274,11 @@ class LGBMTrain(MergeDictOperand):
                             worker_to_args[worker][arg].append(chunk)
 
         out_chunks = []
-        workers = list(workers)
-        bands = list(ip_to_bands.values())
-        for worker_id, worker in enumerate(workers):
+        ips = list(ips)
+        workers = list(ip_to_worker.values())
+        for worker_id, worker in enumerate(ips):
             chunk_op = op.copy().reset_key()
-            chunk_op.expect_worker = ip_to_bands[worker]
+            chunk_op.expect_worker = ip_to_worker[worker]
 
             input_chunks = []
             concat_args = worker_to_args.get(worker, {})
@@ -302,11 +302,11 @@ class LGBMTrain(MergeDictOperand):
                         input_chunks.append(arg_chunk)
 
             worker_ports_chunk = (
-                yield from recursive_tile(collect_ports(bands, op.data))
+                yield from recursive_tile(collect_ports(workers, op.data))
             ).chunks[0]
             input_chunks.append(worker_ports_chunk)
 
-            chunk_op._workers = workers
+            chunk_op._workers = ips
             chunk_op._worker_ports = worker_ports_chunk
             chunk_op._worker_id = worker_id
 
