@@ -214,6 +214,9 @@ class LGBMTrain(MergeDictOperand):
         metas = ctx.get_chunks_meta(
             [c.key for c in data.chunks], fields=["ip", "bands"]
         )
+        assert all(
+            m["ip"] for m in metas
+        ), f"There is meta who doesn't contain ip, metas: metas"
         return {m["ip"]: m["bands"][0][0] if m["bands"] else None for m in metas}
 
     @staticmethod

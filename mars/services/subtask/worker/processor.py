@@ -32,7 +32,7 @@ from ....metrics import Metrics
 from ....optimization.physical import optimize
 from ....serialization import AioSerializer
 from ....typing import BandType, ChunkType
-from ....utils import get_chunk_key_to_data_keys, calc_data_size
+from ....utils import get_chunk_key_to_data_keys, calc_data_size, get_node_ip_address
 from ...context import ThreadedServiceContext
 from ...meta.api import MetaAPI, WorkerMetaAPI
 from ...session import SessionAPI
@@ -467,9 +467,7 @@ class SubtaskProcessor:
                         # Note: Why add the `ip` field?
                         # lightgbm needs the machine addresses where the data are
                         # to implement distributed learning.
-                        ip=self.result.execution_ip
-                        if hasattr(self.result, "execution_ip")
-                        else None,
+                        ip=get_node_ip_address(),
                     )
                 )
             # for supervisor, only save basic meta that is small like memory_size etc
