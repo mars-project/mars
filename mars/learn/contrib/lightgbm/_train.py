@@ -214,10 +214,16 @@ class LGBMTrain(MergeDictOperand):
         metas = ctx.get_chunks_meta(
             [c.key for c in data.chunks], fields=["ip", "bands"]
         )
-        assert all(
-            m["ip"] for m in metas
-        ), f"There is meta who doesn't contain ip, metas: metas"
-        return {m["ip"]: m["bands"][0][0] if m["bands"] else None for m in metas}
+
+        ips = []
+        ip_to_worker = {}
+        for m in metas:
+            ip = m["ip"]
+            assert ip, "There is meta {meta} who doesn't contain ip."
+            ips.append(ip)
+            bands = m["bands"]
+            ip_to_worker[ip] = bands[0][0] if bands else None
+        return ips, ip_to_worker
 
     @staticmethod
     def _concat_chunks_by_worker(chunks, chunk_workers):
@@ -236,8 +242,7 @@ class LGBMTrain(MergeDictOperand):
         worker_to_args = defaultdict(dict)
 
         # Note: Mars worker is band address, and LGBMTrain worker is machine ip.
-        ip_to_worker = cls._get_data_chunks_workers(ctx, data)
-        ips = ip_to_worker.keys()
+        ips, ip_to_worker = cls._get_data_chunks_workers(ctx, data)
 
         for arg in ["_data", "_label", "_sample_weight", "_init_score"]:
             if getattr(op, arg) is not None:
@@ -248,7 +253,7 @@ class LGBMTrain(MergeDictOperand):
 
         if op.eval_datas:
             eval_workers_list = [
-                cls._get_data_chunks_workers(ctx, d).keys() for d in op.eval_datas
+                cls._get_data_chunks_workers(ctx, d)[0] for d in op.eval_datas
             ]
             extra_workers = reduce(
                 operator.or_, (set(w) for w in eval_workers_list)
@@ -277,7 +282,7 @@ class LGBMTrain(MergeDictOperand):
                             worker_to_args[worker][arg].append(chunk)
 
         out_chunks = []
-        ips = list(ips)
+        ips = list(set(ips))
         workers = list(ip_to_worker.values())
         for worker_id, worker in enumerate(ips):
             chunk_op = op.copy().reset_key()
