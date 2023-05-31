@@ -108,6 +108,7 @@ jobs:
               pip install "xgboost_ray<0.1.14" "protobuf<4"
               # Ray Datasets need pyarrow>=6.0.1
               pip install "pyarrow>=6.0.1"
+              pip install lightgbm
             fi
             if [ -n "$RUN_DASK" ]; then
               pip install "dask[complete]" "mimesis<9.0.0" scikit-learn

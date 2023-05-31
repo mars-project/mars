@@ -23,6 +23,7 @@ import pytest
 
 from .... import tensor as mt
 from .... import dataframe as md
+from ....learn.contrib.lightgbm.tests import test_classifier
 from ....oscar.errors import ReconstructWorkerError
 from ....session import get_default_session, new_session
 from ....tests.core import require_ray, mock, DICT_NOT_EMPTY
@@ -335,3 +336,8 @@ def test_init_metrics_on_ray(ray_start_regular_shared, create_cluster):
     assert api._metric_backend == "ray"
 
     client.session.stop_server()
+
+
+@require_ray
+def test_lightgbm_classifier_on_ray(ray_start_regular_shared, create_cluster):
+    test_classifier.test_local_classifier(create_cluster)

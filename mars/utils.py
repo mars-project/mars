@@ -1879,12 +1879,8 @@ def retry_callable(
     return retry_call
 
 
-"""
-`get_node_ip_address` is taken from Ray.
-https://github.com/ray-project/ray/blob/master/python/ray/_private/services.py#L617
-"""
-
-
+# `get_node_ip_address` is taken from Ray.
+# https://github.com/ray-project/ray/blob/master/python/ray/_private/services.py#L617
 def get_node_ip_address(address="8.8.8.8:53"):
     """Determine the IP address of the local node.
 
@@ -1910,7 +1906,7 @@ def get_node_ip_address(address="8.8.8.8:53"):
                 # try get node ip address from host name
                 host_name = socket.getfqdn(socket.gethostname())
                 node_ip_address = socket.gethostbyname(host_name)
-            except Exception:
+            except Exception:  # noqa: E722  # nosec  # pylint: disable=bare-except
                 pass
     finally:
         s.close()
