@@ -1877,3 +1877,38 @@ def retry_callable(
             raise ex  # pylint: disable-msg=E0702
 
     return retry_call
+
+
+# `get_node_ip_address` is taken from Ray.
+# https://github.com/ray-project/ray/blob/master/python/ray/_private/services.py#L617
+def get_node_ip_address(address="8.8.8.8:53"):
+    """Determine the IP address of the local node.
+
+    Args:
+        address (str): The IP address and port of any known live service on the
+            network you care about.
+
+    Returns:
+        The IP address of the current node.
+    """
+    ip_address, port = address.split(":")
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # This command will raise an exception if there is no internet
+        # connection.
+        s.connect((ip_address, int(port)))
+        node_ip_address = s.getsockname()[0]
+    except Exception as e:  # pragma: no cover
+        node_ip_address = "127.0.0.1"
+        # [Errno 101] Network is unreachable
+        if e.errno == 101:
+            try:
+                # try get node ip address from host name
+                host_name = socket.getfqdn(socket.gethostname())
+                node_ip_address = socket.gethostbyname(host_name)
+            except Exception:  # noqa: E722  # nosec  # pylint: disable=bare-except
+                pass
+    finally:
+        s.close()
+
+    return node_ip_address

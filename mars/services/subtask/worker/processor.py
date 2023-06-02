@@ -32,7 +32,12 @@ from ....metrics import Metrics
 from ....optimization.physical import optimize
 from ....serialization import AioSerializer
 from ....typing import BandType, ChunkType
-from ....utils import get_chunk_key_to_data_keys, calc_data_size
+from ....utils import (
+    calc_data_size,
+    get_chunk_key_to_data_keys,
+    get_node_ip_address,
+    lazy_import,
+)
 from ...context import ThreadedServiceContext
 from ...meta.api import MetaAPI, WorkerMetaAPI
 from ...session import SessionAPI
@@ -40,6 +45,9 @@ from ...storage import StorageAPI
 from ...task import TaskAPI, task_options
 from ..core import Subtask, SubtaskStatus, SubtaskResult
 from ..utils import iter_input_data_keys, iter_output_data, get_mapper_data_keys
+
+
+lightgbm = lazy_import("lightgbm")
 
 logger = logging.getLogger(__name__)
 
@@ -464,6 +472,10 @@ class SubtaskProcessor:
                         bands=[self._band],
                         chunk_key=chunk_key,
                         exclude_fields=["object_ref"],
+                        # Note: Why add the `ip` field?
+                        # lightgbm needs the machine addresses where the data are
+                        # to implement distributed learning.
+                        ip=get_node_ip_address() if lightgbm else None,
                     )
                 )
             # for supervisor, only save basic meta that is small like memory_size etc

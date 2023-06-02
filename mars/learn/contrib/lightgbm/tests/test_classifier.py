@@ -21,6 +21,7 @@ import pytest
 
 from ..... import tensor as mt
 from ..... import dataframe as md
+from .....deploy.oscar.local import new_cluster
 
 try:
     import lightgbm
@@ -45,8 +46,22 @@ x_sparse[np.arange(n_rows), np.random.randint(n_columns, size=n_rows)] = np.nan
 X_sparse = mt.tensor(x_sparse, chunk_size=chunk_size).tosparse(missing=np.nan)[filter]
 
 
+@pytest.mark.parametrize(indirect=True)
+@pytest.fixture
+async def create_cluster():
+    start_method = os.environ.get("POOL_START_METHOD", None)
+    client = await new_cluster(
+        subprocess_start_method=start_method,
+        n_worker=2,
+        n_cpu=4,
+        use_uvloop=False,
+    )
+    async with client:
+        yield client
+
+
 @pytest.mark.skipif(lightgbm is None, reason="LightGBM not installed")
-def test_local_classifier(setup):
+def test_local_classifier(create_cluster):
     y_data = (y * 10).astype(mt.int32)
     classifier = LGBMClassifier(n_estimators=2)
     classifier.fit(X, y_data, eval_set=[(X, y_data)], verbose=True)
