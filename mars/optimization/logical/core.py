@@ -157,7 +157,7 @@ class OptimizationRule(ABC):
             If the input key of the removed node's successor can't be found in the subgraph.
             Or some of the nodes of the subgraph are in removed ones.
         """
-        infected_successors = set()
+        affected_successors = set()
 
         output_to_node = dict()
         removed_nodes = removed_nodes or set()
@@ -170,15 +170,15 @@ class OptimizationRule(ABC):
                     output_to_node[output.key] = node
 
         for node in removed_nodes:
-            for infected_successor in self._graph.iter_successors(node):
-                if infected_successor not in removed_nodes:
-                    infected_successors.add(infected_successor)
-        # Check whether infected successors' inputs are in subgraph
-        for infected_successor in infected_successors:
-            for inp in infected_successor.inputs:
+            for affected_successor in self._graph.iter_successors(node):
+                if affected_successor not in removed_nodes:
+                    affected_successors.add(affected_successor)
+        # Check whether affected successors' inputs are in subgraph
+        for affected_successor in affected_successors:
+            for inp in affected_successor.inputs:
                 if inp.key not in output_to_node:
                     raise ValueError(
-                        f"The output {inp} of node {infected_successor} is missing in the subgraph"
+                        f"The output {inp} of node {affected_successor} is missing in the subgraph"
                     )
         for node in removed_nodes:
             self._graph.remove_node(node)
@@ -194,7 +194,7 @@ class OptimizationRule(ABC):
         for node in graph.iter_nodes():
             self._graph.add_node(node)
 
-        for node in itertools.chain(graph.iter_nodes(), infected_successors):
+        for node in itertools.chain(graph.iter_nodes(), affected_successors):
             for inp in node.inputs:
                 pred_node = output_to_node[inp.key]
                 self._graph.add_edge(pred_node, node)
