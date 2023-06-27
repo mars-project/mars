@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import functools
+import itertools
 import weakref
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -19,7 +20,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List, Optional, Type, Set
 
-from ...core import OperandType, EntityType, enter_mode
+from ...core import OperandType, EntityType, enter_mode, Entity
 from ...core.graph import EntityGraph
 from ...utils import implements
 
@@ -129,6 +130,77 @@ class OptimizationRule(ABC):
             self._graph.add_edge(pred, new_node)
         for succ in successors:
             self._graph.add_edge(new_node, succ)
+
+    def _replace_subgraph(
+        self,
+        graph: Optional[EntityGraph],
+        removed_nodes: Optional[Set[EntityType]],
+        new_results: Optional[List[Entity]] = None,
+    ):
+        """
+        Replace the subgraph from the self._graph represented by a list of nodes with input graph.
+        It will delete the nodes in removed_nodes with all linked edges first, and then add (or update if it's still
+        existed in self._graph) the nodes and edges of the input graph.
+
+        Parameters
+        ----------
+        graph : EntityGraph, optional
+            The input graph. If it's none, no new node and edge will be added.
+        removed_nodes : Set[EntityType], optional
+            The nodes to be removed. All the edges connected with them are removed as well.
+        new_results : List[EntityType], optional, default None
+            The updated results of the graph. If it's None, then the results will not be updated.
+
+        Raises
+        ------
+        ReplaceSubgraphError
+            If the input key of the removed node's successor can't be found in the subgraph.
+            Or some of the nodes of the subgraph are in removed ones.
+        """
+        infected_successors = set()
+
+        output_to_node = dict()
+        removed_nodes = removed_nodes or set()
+        if graph is not None:
+            # Add the output key -> node of the subgraph
+            for node in graph.iter_nodes():
+                if node in removed_nodes:
+                    raise ReplaceSubgraphError(f"The node {node} is in the removed set")
+                for output in node.outputs:
+                    output_to_node[output.key] = node
+
+        for node in removed_nodes:
+            for infected_successor in self._graph.iter_successors(node):
+                if infected_successor not in removed_nodes:
+                    infected_successors.add(infected_successor)
+        # Check whether infected successors' inputs are in subgraph
+        for infected_successor in infected_successors:
+            for inp in infected_successor.inputs:
+                if inp.key not in output_to_node:
+                    raise ReplaceSubgraphError(
+                        f"The output {inp} of node {infected_successor} is missing in the subgraph"
+                    )
+        for node in removed_nodes:
+            self._graph.remove_node(node)
+
+        if graph is None:
+            return
+
+        # Add the output key -> node of the original graph
+        for node in self._graph.iter_nodes():
+            for output in node.outputs:
+                output_to_node[output.key] = node
+
+        for node in graph.iter_nodes():
+            self._graph.add_node(node)
+
+        for node in itertools.chain(graph.iter_nodes(), infected_successors):
+            for inp in node.inputs:
+                pred_node = output_to_node[inp.key]
+                self._graph.add_edge(pred_node, node)
+
+        if new_results is not None:
+            self._graph.results = new_results.copy()
 
     def _add_collapsable_predecessor(self, node: EntityType, predecessor: EntityType):
         pred_original = self._records.get_original_entity(predecessor, predecessor)
@@ -283,3 +355,7 @@ class Optimizer(ABC):
                 graph.results = new_results
 
         return records
+
+
+class ReplaceSubgraphError(Exception):
+    pass

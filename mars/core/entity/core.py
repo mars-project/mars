@@ -43,6 +43,10 @@ class EntityData(Base):
         return self._op
 
     @property
+    def outputs(self):
+        return self._op.outputs
+
+    @property
     def inputs(self):
         return self.op.inputs
 
