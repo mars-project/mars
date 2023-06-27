@@ -15,7 +15,7 @@ import itertools
 import pytest
 
 
-from ..core import OptimizationRule, ReplaceSubgraphError
+from ..core import OptimizationRule
 from .... import tensor as mt
 from .... import dataframe as md
 
@@ -130,7 +130,7 @@ def test_replace_null_subgraph():
     r = _MockRule(g1, None, None)
     expected_results = [v3.outputs[0]]
     # delete c5 s5 will fail
-    with pytest.raises(ReplaceSubgraphError) as e:
+    with pytest.raises(ValueError) as e:
         r.replace_subgraph(None, {key_to_node[op.key] for op in [s1, s2]})
         assert g1.results == expected_results
         assert set(g1) == {key_to_node[n.key] for n in {s1, c1, v1, s2, c2, v2, v3}}

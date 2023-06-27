@@ -165,7 +165,7 @@ class OptimizationRule(ABC):
             # Add the output key -> node of the subgraph
             for node in graph.iter_nodes():
                 if node in removed_nodes:
-                    raise ReplaceSubgraphError(f"The node {node} is in the removed set")
+                    raise ValueError(f"The node {node} is in the removed set")
                 for output in node.outputs:
                     output_to_node[output.key] = node
 
@@ -177,7 +177,7 @@ class OptimizationRule(ABC):
         for infected_successor in infected_successors:
             for inp in infected_successor.inputs:
                 if inp.key not in output_to_node:
-                    raise ReplaceSubgraphError(
+                    raise ValueError(
                         f"The output {inp} of node {infected_successor} is missing in the subgraph"
                     )
         for node in removed_nodes:
@@ -355,7 +355,3 @@ class Optimizer(ABC):
                 graph.results = new_results
 
         return records
-
-
-class ReplaceSubgraphError(Exception):
-    pass
