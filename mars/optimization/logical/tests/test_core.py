@@ -135,7 +135,7 @@ def test_replace_null_subgraph():
     expected_results = [v3.outputs[0]]
 
     # delete c5 s5 will fail
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         r.replace_subgraph(
             None, {key_to_node[op.key] for op in [s1, s2]}, None, [v2.outputs[0]]
         )
