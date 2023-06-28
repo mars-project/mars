@@ -135,7 +135,8 @@ class OptimizationRule(ABC):
         self,
         graph: Optional[EntityGraph],
         nodes_to_remove: Optional[Set[EntityType]],
-        new_results: Optional[List[Entity]] = None,
+        new_results: Optional[List[Entity]],
+        results_to_remove: Optional[List[Entity]],
     ):
         """
         Replace the subgraph from the self._graph represented by a list of nodes with input graph.
@@ -148,19 +149,28 @@ class OptimizationRule(ABC):
             The input graph. If it's none, no new node and edge will be added.
         nodes_to_remove : Set[EntityType], optional
             The nodes to be removed. All the edges connected with them are removed as well.
-        new_results : List[EntityType], optional, default None
-            The updated results of the graph. If it's None, then the results will not be updated.
+        new_results : List[Entity], optional
+            The new results to be added to the graph.
+        results_to_remove : List[Entity], optional
+            The results to be removed from the graph. If a result is not in self._graph.results, it will be ignored.
 
         Raises
         ------
-        ReplaceSubgraphError
-            If the input key of the removed node's successor can't be found in the subgraph.
-            Or some of the nodes of the subgraph are in removed ones.
+        ValueError
+            1. If the input key of the removed node's successor can't be found in the subgraph.
+            2. Or some of the nodes of the subgraph are in removed ones.
+            3. Or the added result is not a valid output of any node in the updated graph.
         """
         affected_successors = set()
 
         output_to_node = dict()
         nodes_to_remove = nodes_to_remove or set()
+        results_to_remove = results_to_remove or list()
+        new_results = new_results or list()
+        final_results = set(
+            filter(lambda x: x not in results_to_remove, self._graph.results)
+        )
+
         if graph is not None:
             # Add the output key -> node of the subgraph
             for node in graph.iter_nodes():
@@ -168,6 +178,17 @@ class OptimizationRule(ABC):
                     raise ValueError(f"The node {node} is in the removed set")
                 for output in node.outputs:
                     output_to_node[output.key] = node
+
+        # Add the output key -> node of the original graph
+        for node in self._graph.iter_nodes():
+            if node not in nodes_to_remove:
+                for output in node.outputs:
+                    output_to_node[output.key] = node
+
+        for result in new_results:
+            if result.key not in output_to_node:
+                raise ValueError(f"Unknown result {result} to add")
+        final_results.update(new_results)
 
         for node in nodes_to_remove:
             for affected_successor in self._graph.iter_successors(node):
@@ -180,16 +201,12 @@ class OptimizationRule(ABC):
                     raise ValueError(
                         f"The output {inp} of node {affected_successor} is missing in the subgraph"
                     )
+        # Here all the pre-check are passed, we start to replace the subgraph
         for node in nodes_to_remove:
             self._graph.remove_node(node)
 
         if graph is None:
             return
-
-        # Add the output key -> node of the original graph
-        for node in self._graph.iter_nodes():
-            for output in node.outputs:
-                output_to_node[output.key] = node
 
         for node in graph.iter_nodes():
             self._graph.add_node(node)
@@ -199,8 +216,7 @@ class OptimizationRule(ABC):
                 pred_node = output_to_node[inp.key]
                 self._graph.add_edge(pred_node, node)
 
-        if new_results is not None:
-            self._graph.results = list(new_results)
+        self._graph.results = list(final_results)
 
     def _add_collapsable_predecessor(self, node: EntityType, predecessor: EntityType):
         pred_original = self._records.get_original_entity(predecessor, predecessor)

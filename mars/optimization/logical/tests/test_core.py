@@ -24,8 +24,8 @@ class _MockRule(OptimizationRule):
     def apply(self) -> bool:
         pass
 
-    def replace_subgraph(self, graph, removed_nodes, new_results=None):
-        self._replace_subgraph(graph, removed_nodes, new_results)
+    def replace_subgraph(self, graph, nodes_to_remove, new_results, results_to_remove):
+        self._replace_subgraph(graph, nodes_to_remove, new_results, results_to_remove)
 
 
 def test_replace_tileable_subgraph():
@@ -78,11 +78,15 @@ def test_replace_tileable_subgraph():
     c2 = g1.successors(key_to_node[s2.key])[0]
     c5 = g1.successors(key_to_node[s5.key])[0]
 
-    expected_results = [v8.outputs[0]]
+    new_results = [v8.outputs[0]]
+    removed_results = [
+        v6.outputs[0],
+        v8.outputs[0],  # v8.outputs[0] is not in the original results, so we ignore it.
+    ]
     r.replace_subgraph(
-        g2, {key_to_node[op.key] for op in [v3, v4, v6]}, expected_results
+        g2, {key_to_node[op.key] for op in [v3, v4, v6]}, new_results, removed_results
     )
-    assert g1.results == expected_results
+    assert g1.results == new_results
 
     expected_nodes = {s1, c1, v1, s2, c2, v2, s5, c5, v5, v7, v8}
     assert set(g1) == {key_to_node[n.key] for n in expected_nodes}
@@ -110,10 +114,10 @@ def test_replace_tileable_subgraph():
 def test_replace_null_subgraph():
     """
     Original Graph:
-     s1 ---> c1 ---> v1 ---> v3 <--- v2 <--- c2 <--- s2
+     s1 ---> c1 ---> v1 ---> v3(out) <--- v2 <--- c2 <--- s2
 
     Target Graph:
-      c1 ---> v1 ---> v3  <--- v2 <--- c2
+      c1 ---> v1 ---> v3  <--- v2(out) <--- c2
 
     The nodes [s1, s2] will be removed.
     Subgraph is None
@@ -129,30 +133,39 @@ def test_replace_null_subgraph():
     c2 = g1.successors(key_to_node[s2.key])[0]
     r = _MockRule(g1, None, None)
     expected_results = [v3.outputs[0]]
+
     # delete c5 s5 will fail
     with pytest.raises(ValueError) as e:
-        r.replace_subgraph(None, {key_to_node[op.key] for op in [s1, s2]})
-        assert g1.results == expected_results
-        assert set(g1) == {key_to_node[n.key] for n in {s1, c1, v1, s2, c2, v2, v3}}
-        expected_edges = {
-            s1: [c1],
-            c1: [v1],
-            v1: [v3],
-            s2: [c2],
-            c2: [v2],
-            v2: [v3],
-            v3: [],
-        }
-        for pred, successors in expected_edges.items():
-            pred_node = key_to_node[pred.key]
+        r.replace_subgraph(
+            None, {key_to_node[op.key] for op in [s1, s2]}, None, [v2.outputs[0]]
+        )
+
+    assert g1.results == expected_results
+    assert set(g1) == {key_to_node[n.key] for n in {s1, c1, v1, s2, c2, v2, v3}}
+    expected_edges = {
+        s1: [c1],
+        c1: [v1],
+        v1: [v3],
+        s2: [c2],
+        c2: [v2],
+        v2: [v3],
+        v3: [],
+    }
+    for pred, successors in expected_edges.items():
+        pred_node = key_to_node[pred.key]
         assert g1.count_successors(pred_node) == len(successors)
         for successor in successors:
             assert g1.has_successor(pred_node, key_to_node[successor.key])
 
     c1.inputs.clear()
     c2.inputs.clear()
-    r.replace_subgraph(None, {key_to_node[op.key] for op in [s1, s2]})
-    assert g1.results == expected_results
+    r.replace_subgraph(
+        None,
+        {key_to_node[op.key] for op in [s1, s2]},
+        [v2.outputs[0]],
+        [v3.outputs[0]],
+    )
+    assert g1.results == [v2.outputs[0]]
     assert set(g1) == {key_to_node[n.key] for n in {c1, v1, c2, v2, v3}}
     expected_edges = {
         c1: [v1],
@@ -198,7 +211,7 @@ def test_replace_subgraph_without_removing_nodes():
     c2 = g1.successors(key_to_node[s2.key])[0]
     c3 = g2.successors(key_to_node[s3.key])[0]
     r = _MockRule(g1, None, None)
-    r.replace_subgraph(g2, None, expected_results)
+    r.replace_subgraph(g2, None, [v3.outputs[0]], None)
     assert g1.results == expected_results
     assert set(g1) == {
         key_to_node[n.key] for n in {s1, c1, v1, s2, c2, v2, s3, c3, v3, v4}
