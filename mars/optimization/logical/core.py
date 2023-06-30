@@ -13,7 +13,6 @@
 # limitations under the License.
 import functools
 import itertools
-import weakref
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
@@ -92,8 +91,6 @@ class OptimizationRecords:
 
 
 class OptimizationRule(ABC):
-    _preds_to_remove = weakref.WeakKeyDictionary()
-
     def __init__(
         self,
         graph: EntityGraph,
@@ -216,35 +213,6 @@ class OptimizationRule(ABC):
 
         for result in new_results:
             self._graph.results[result_indices[result.key]] = result
-
-    def _add_collapsable_predecessor(self, node: EntityType, predecessor: EntityType):
-        pred_original = self._records.get_original_entity(predecessor, predecessor)
-        if predecessor not in self._preds_to_remove:
-            self._preds_to_remove[pred_original] = {node}
-        else:
-            self._preds_to_remove[pred_original].add(node)
-
-    def _remove_collapsable_predecessors(self, node: EntityType):
-        node = self._records.get_optimization_result(node) or node
-        preds_opt_to_remove = []
-        for pred in self._graph.predecessors(node):
-            pred_original = self._records.get_original_entity(pred, pred)
-            pred_opt = self._records.get_optimization_result(pred, pred)
-
-            if pred_opt in self._graph.results or pred_original in self._graph.results:
-                continue
-            affect_succ = self._preds_to_remove.get(pred_original) or []
-            affect_succ_opt = [
-                self._records.get_optimization_result(s, s) for s in affect_succ
-            ]
-            if all(s in affect_succ_opt for s in self._graph.successors(pred)):
-                preds_opt_to_remove.append((pred_original, pred_opt))
-
-        for pred_original, pred_opt in preds_opt_to_remove:
-            self._graph.remove_node(pred_opt)
-            self._records.append_record(
-                OptimizationRecord(pred_original, None, OptimizationRecordType.delete)
-            )
 
 
 class OperandBasedOptimizationRule(OptimizationRule):

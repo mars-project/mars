@@ -157,10 +157,7 @@ def test_replace_null_subgraph():
 
     c1.inputs.clear()
     c2.inputs.clear()
-    r.replace_subgraph(
-        None,
-        {key_to_node[op.key] for op in [s1, s2]}
-    )
+    r.replace_subgraph(None, {key_to_node[op.key] for op in [s1, s2]})
     assert g1.results == expected_results
     assert set(g1) == {key_to_node[n.key] for n in {c1, v1, c2, v2, v3}}
     expected_edges = {
