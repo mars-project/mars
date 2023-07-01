@@ -31,9 +31,15 @@ from ._proxima import build_proxima_index, proxima_query, METRIC_TO_PROXIMA_METR
 from ._kneighbors_graph import KNeighborsGraph
 
 
+def _call_if_callable(metrics):
+    if callable(metrics):
+        return metrics()
+    return metrics
+
+
 VALID_METRICS = dict(
-    ball_tree=SklearnBallTree.valid_metrics,
-    kd_tree=SklearnKDTree.valid_metrics,
+    ball_tree=_call_if_callable(SklearnBallTree.valid_metrics),
+    kd_tree=_call_if_callable(SklearnKDTree.valid_metrics),
     # The following list comes from the
     # sklearn.metrics.pairwise doc string
     brute=(

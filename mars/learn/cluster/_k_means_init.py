@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
+
 import numpy as np
 
 from ... import opcodes
@@ -212,12 +214,18 @@ class KMeansPlusPlusInit(LearnOperand, LearnOperandMixin):
         )
 
         with device(device_id):
+            arg_spec = inspect.getfullargspec(_kmeans_plusplus)
+            kw = {}
+            if "sample_weight" in arg_spec.args:
+                kw["sample_weight"] = np.ones(x.shape[0])
+
             ctx[op.outputs[0].key] = _kmeans_plusplus(
                 x,
                 op.n_clusters,
                 x_squared_norms=x_squared_norms,
                 random_state=op.state,
                 n_local_trials=op.n_local_trials,
+                **kw
             )[0]
 
 
