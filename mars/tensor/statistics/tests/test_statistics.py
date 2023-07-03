@@ -16,9 +16,12 @@ import numpy as np
 import pytest
 
 from ....core import tile
+from ....lib.version import Version
 from ...datasource import tensor, array
 from .. import digitize, histogram_bin_edges, quantile, percentile
 from ..quantile import INTERPOLATION_TYPES
+
+np_version = Version(np.__version__)
 
 
 def test_digitize():
@@ -70,7 +73,11 @@ def test_quantile():
     raw = np.random.rand(100)
     q = np.random.rand(10)
 
-    for dtype in [np.float32, np.int64, np.complex128]:
+    quantile_dtypes = [np.float32, np.int64]
+    if np_version < Version("1.25"):
+        quantile_dtypes.extend([np.complex128])
+
+    for dtype in quantile_dtypes:
         raw2 = raw.astype(dtype)
         a = tensor(raw2, chunk_size=100)
 
@@ -84,7 +91,7 @@ def test_quantile():
     raw = np.random.rand(20, 10)
     q = np.random.rand(10)
 
-    for dtype in [np.float32, np.int64, np.complex128]:
+    for dtype in quantile_dtypes:
         for axis in (None, 0, 1, [0, 1]):
             for interpolation in INTERPOLATION_TYPES:
                 for keepdims in [True, False]:
