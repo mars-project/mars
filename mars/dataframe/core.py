@@ -379,6 +379,10 @@ class IndexValue(Serializable):
         return getattr(self._index_value, "_name", None)
 
     @property
+    def names(self):
+        return getattr(self._index_value, "_names", [self.name])
+
+    @property
     def inferred_type(self):
         return self._index_value.inferred_type
 
