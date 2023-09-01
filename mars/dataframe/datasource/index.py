@@ -68,7 +68,7 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
         elif hasattr(inp, "index_value"):
             # get index from Mars DataFrame, Series or Index
             name = name if name is not None else inp.index_value.name
-            names = names if names is not None else [name]
+            names = names if names is not None else inp.index_value.names
             if inp.index_value.has_value():
                 self.data = data = inp.index_value.to_pandas()
                 return self.new_index(

@@ -27,7 +27,7 @@ from ....config import option_context
 from ....core import tile
 from ....tests.core import require_ray
 from ....utils import lazy_import
-from ...core import IndexValue, DatetimeIndex, Int64Index, Float64Index
+from ...core import IndexValue, DatetimeIndex, Int64Index, Float64Index, MultiIndex
 from ..core import merge_small_files
 from ..dataframe import from_pandas as from_pandas_df
 from ..date_range import date_range
@@ -154,6 +154,16 @@ def test_from_pandas_dataframe():
         df = tile(from_pandas_df(raw))
         # see GH#2985, empty chunks are wrongly generated
         assert len([ns for ns in df.nsplits[1] if ns == 0]) == 0
+
+
+def test_from_pandas_dataframe_with_multi_index():
+    index = pd.MultiIndex.from_tuples([("k1", "v1")], names=["X", "Y"])
+    data = np.random.randint(0, 100, size=(1, 3))
+    pdf = pd.DataFrame(data, columns=["A", "B", "C"], index=index)
+    df = from_pandas_df(pdf, chunk_size=4)
+    assert isinstance(df.index, MultiIndex)
+    assert df.index.names == ["X", "Y"]
+    assert df.index.name is None
 
 
 def test_from_pandas_series():
