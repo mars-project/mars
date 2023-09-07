@@ -14,11 +14,14 @@
 
 import asyncio
 import functools
+import logging
 from collections import namedtuple
 from typing import Dict, List
 
 from .....utils import lazy_import
 from ..api import Fetcher, register_fetcher_cls
+
+logger = logging.getLogger(__name__)
 
 ray = lazy_import("ray")
 _FetchInfo = namedtuple("FetchInfo", ["key", "object_ref", "conditions"])
@@ -36,9 +39,10 @@ class RayFetcher(Fetcher):
     name = "ray"
     required_meta_keys = ("object_refs",)
 
-    def __init__(self, **kwargs):
+    def __init__(self, loop=None, **kwargs):
         self._fetch_info_list = []
         self._no_conditions = True
+        self._loop = loop
 
     @staticmethod
     @functools.lru_cache(maxsize=None)  # Specify maxsize=None to make it faster
@@ -55,9 +59,12 @@ class RayFetcher(Fetcher):
 
     async def get(self):
         if self._no_conditions:
+            logger.warning(f"FETCHER_0 {self._fetch_info_list}")
             return await asyncio.gather(
-                *(info.object_ref for info in self._fetch_info_list)
+                *(info.object_ref for info in self._fetch_info_list),
+                loop=self._loop,
             )
+        logger.warning("FETCHER_1")
         refs = [None] * len(self._fetch_info_list)
         for index, fetch_info in enumerate(self._fetch_info_list):
             if fetch_info.conditions is None:
@@ -66,4 +73,5 @@ class RayFetcher(Fetcher):
                 refs[index] = self._remote_query_object_with_condition().remote(
                     fetch_info.object_ref, tuple(fetch_info.conditions)
                 )
-        return await asyncio.gather(*refs)
+        logger.warning("FETCHER_2")
+        return await asyncio.gather(*refs, loop=self._loop)

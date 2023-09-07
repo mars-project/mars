@@ -389,6 +389,7 @@ def new_ray_session(
         client = new_cluster_in_ray(backend=backend, **new_cluster_kwargs)
         session_id = session_id or client.session.session_id
         address = client.address
+        logger.warning("CLIENT ADDRESS: %s", address)
     session = new_session(
         address=address, session_id=session_id, backend=backend, default=default
     )

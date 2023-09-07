@@ -177,7 +177,7 @@ class AbstractSession(ABC):
         AbstractSession._default = None
 
     @classproperty
-    def default(self):
+    def default(self) -> Optional["AbstractSession"]:
         return AbstractSession._default
 
 
@@ -912,12 +912,19 @@ class SyncSession(AbstractSyncSession):
         **kwargs,
     ) -> "AbstractSession":
         isolation = ensure_isolation_created(kwargs)
+        logger.warning(
+            "ISOLATION INFO: %r, cur_thread_ident: %s",
+            isolation,
+            threading.current_thread().ident,
+        )
         coro = _get_isolated_session_cls(address).init(
             address, session_id, backend, new=new, **kwargs
         )
+        logger.warning("CORO INFO: %r, address: %s, kw: %r, loop %d%r", coro, address, kwargs, id(isolation.loop), isolation.loop)
         fut = asyncio.run_coroutine_threadsafe(coro, isolation.loop)
         isolated_session = fut.result()
-        return SyncSession(address, session_id, isolated_session, isolation)
+        session = SyncSession(address, session_id, isolated_session, isolation)
+        return session
 
     def as_default(self) -> AbstractSession:
         AbstractSession._default = self._isolated_session
