@@ -480,3 +480,7 @@ def test_to_pandas():
     s2 = df2["b"].str[:2]
     expected = df["b"].astype("string").str[:2]
     pd.testing.assert_series_equal(s2, expected)
+
+    # test reverse conversion to arrow
+    arrow_data = pa.RecordBatch.from_pandas(df2)
+    assert arrow_data.num_rows == len(df2)

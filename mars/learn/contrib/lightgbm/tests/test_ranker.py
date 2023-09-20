@@ -35,7 +35,7 @@ y_raw = rs.rand(n_rows, chunk_size=chunk_size)
 def test_local_ranker(setup):
     y = (y_raw * 10).astype(mt.int32)
     ranker = LGBMRanker(n_estimators=2)
-    ranker.fit(X_raw, y, group=[X_raw.shape[0]], verbose=True)
+    ranker.fit(X_raw, y, group=[X_raw.shape[0]])
     prediction = ranker.predict(X_raw)
 
     assert prediction.ndim == 1

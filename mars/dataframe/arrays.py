@@ -301,6 +301,12 @@ class ArrowArray(ExtensionArray):
     def _array(self):
         return self._arrow_array if self._use_arrow else self._ndarray
 
+    def __arrow_array__(self, type=None):
+        if self._use_arrow:
+            combined = self._arrow_array.combine_chunks()
+            return combined.cast(type) if type else combined
+        return super().__arrow_array__(type=type)
+
     @property
     def dtype(self) -> "Type[ArrowDtype]":
         return self._dtype

@@ -17,8 +17,9 @@ from ..utils import make_import_error_func
 from .core import xgboost, XGBScikitLearnBase
 
 
-XGBRegressor = make_import_error_func("xgboost")
-if xgboost:
+if not xgboost:
+    XGBRegressor = make_import_error_func("xgboost")
+else:
     from .core import wrap_evaluation_matrices
     from .train import train
     from .predict import predict
