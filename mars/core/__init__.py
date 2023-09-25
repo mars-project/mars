@@ -15,6 +15,7 @@
 # noinspection PyUnresolvedReferences
 from ..typing import ChunkType, TileableType, EntityType, OperandType
 from .base import ExecutionError
+from .context import get_context
 from .entity import (
     Entity,
     EntityData,

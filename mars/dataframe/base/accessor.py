@@ -17,15 +17,17 @@ from typing import Iterable
 
 import pandas as pd
 from pandas.api.types import (
+    is_categorical_dtype,
     is_datetime64_dtype,
     is_datetime64tz_dtype,
-    is_timedelta64_dtype,
     is_period_dtype,
+    is_timedelta64_dtype,
 )
 
 from ...utils import adapt_mars_docstring
-from .string_ import _string_method_to_handlers, SeriesStringMethod
+from .categorical import _categorical_method_to_handlers, SeriesCategoricalMethod
 from .datetimes import _datetime_method_to_handlers, SeriesDatetimeMethod
+from .string_ import _string_method_to_handlers, SeriesStringMethod
 
 
 class StringAccessor:
@@ -259,6 +261,53 @@ class DatetimeAccessor:
     def __dir__(self) -> Iterable[str]:
         s = set(super().__dir__())
         s.update(_datetime_method_to_handlers.keys())
+        return list(s)
+
+
+class CategoricalAccessor:
+    def __init__(self, series):
+        if not is_categorical_dtype(series.dtype):
+            raise AttributeError("Can only use .cat accessor with categorical values")
+        self._series = series
+
+    @property
+    def ordered(self):
+        return self._series.dtype.ordered
+
+    @property
+    def categories(self):
+        return getattr(self, "_get_categories")()
+
+    @classmethod
+    def _gen_func(cls, method, is_property):
+        def _inner(self, *args, **kwargs):
+            op = SeriesCategoricalMethod(
+                method=method,
+                is_property=is_property,
+                method_args=args,
+                method_kwargs=kwargs,
+            )
+            return op(self._series)
+
+        if hasattr(pd.Series.cat, method):
+            _inner = wraps(getattr(pd.Series.cat, method))(_inner)
+            _inner.__doc__ = adapt_mars_docstring(
+                getattr(pd.Series.cat, method).__doc__
+            )
+        return _inner
+
+    @classmethod
+    def _register(cls, method):
+        # non-existing members are considered methods by default
+        is_property = not callable(getattr(pd.Series.cat, method, lambda: None))
+        func = cls._gen_func(method, is_property)
+        if is_property:
+            func = property(func)
+        setattr(cls, method, func)
+
+    def __dir__(self) -> Iterable[str]:
+        s = set(super().__dir__())
+        s.update(_categorical_method_to_handlers.keys())
         return list(s)
 
 

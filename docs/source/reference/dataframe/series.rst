@@ -386,6 +386,31 @@ strings and apply several methods to it. These can be accessed like
        Series.str
        Series.dt
 
+
+.. _generated.series.cat:
+
+Categorical accessor
+~~~~~~~~~~~~~~~
+
+Categorical-dtype specific methods and attributes are available under
+the ``Series.cat`` accessor.
+
+.. autosummary::
+   :toctree: generated/
+   :template: accessor_method.rst
+
+       Series.cat.categories
+       Series.cat.ordered
+       Series.cat.codes
+       Series.cat.rename_categories
+       Series.cat.reorder_categories
+       Series.cat.add_categories
+       Series.cat.remove_categories
+       Series.cat.set_categories
+       Series.cat.as_ordered
+       Series.cat.as_unordered
+
+
 Plotting
 --------
 ``Series.plot`` is both a callable method and a namespace attribute for

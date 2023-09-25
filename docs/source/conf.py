@@ -183,13 +183,13 @@ autosummary_generate = True
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
     "dateutil": ("https://dateutil.readthedocs.io/en/latest/", None),
-    "matplotlib": ("https://matplotlib.org/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
     "pandas-gbq": ("https://pandas-gbq.readthedocs.io/en/latest/", None),
     "py": ("https://pylib.readthedocs.io/en/latest/", None),
     "python": ("https://docs.python.org/3/", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/reference/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
     "statsmodels": ("https://www.statsmodels.org/devel/", None),
     "pyarrow": ("https://arrow.apache.org/docs/", None),
 }
