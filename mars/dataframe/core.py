@@ -67,6 +67,7 @@ from ..utils import (
     tokenize,
     estimate_pandas_size,
     calc_nsplits,
+    is_debugger_repr_thread,
 )
 from .utils import fetch_corner_data, ReprSeries, parse_index, merge_index_value
 
@@ -1430,6 +1431,10 @@ class SeriesData(_BatchedFetcher, BaseSeriesData):
         return tensor.astype(dtype=dtype, order=order, copy=False)
 
     def iteritems(self, batch_size=10000, session=None):
+        if is_build_mode():
+            raise NotImplementedError("Not implemented when building dags")
+        if is_debugger_repr_thread() and len(self._executed_sessions) == 0:
+            raise NotImplementedError("Not implemented when not executed under debug")
         for batch_data in self.iterbatch(batch_size=batch_size, session=session):
             yield from getattr(batch_data, "iteritems")()
 

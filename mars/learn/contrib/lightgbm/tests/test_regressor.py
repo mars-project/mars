@@ -35,7 +35,7 @@ y = rs.randint(0, 10, n_rows, chunk_size=chunk_size)
 @pytest.mark.skipif(lightgbm is None, reason="LightGBM not installed")
 def test_local_regressor(setup):
     regressor = LGBMRegressor(n_estimators=2)
-    regressor.fit(X, y, verbose=True)
+    regressor.fit(X, y)
     prediction = regressor.predict(X)
 
     assert prediction.ndim == 1
@@ -62,7 +62,7 @@ def test_local_regressor(setup):
 
         X_array, y_array = make_classification()
         regressor = LGBMRegressor(n_estimators=2)
-        regressor.fit(X_array, y_array, verbose=True)
+        regressor.fit(X_array, y_array)
         prediction = regressor.predict(X_array)
 
         assert prediction.ndim == 1
@@ -71,7 +71,7 @@ def test_local_regressor(setup):
         X_df = pd.DataFrame(X_array)
         y_df = pd.Series(y_array)
         regressor = LGBMRegressor(n_estimators=2)
-        regressor.fit(X_df, y_df, verbose=True)
+        regressor.fit(X_df, y_df)
         prediction = regressor.predict(X_df)
 
         assert prediction.ndim == 1

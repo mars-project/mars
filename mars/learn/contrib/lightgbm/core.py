@@ -19,8 +19,9 @@ from collections import namedtuple
 import numpy as np
 import pandas as pd
 
-from ....tensor import tensor as mars_tensor
 from ....dataframe import DataFrame as MarsDataFrame, Series as MarsSeries
+from ....lib.version import parse as parse_version
+from ....tensor import tensor as mars_tensor
 
 
 class LGBMModelType(enum.Enum):

@@ -1673,7 +1673,7 @@ def get_func_token(func):
 
 
 def _get_func_token_values(func):
-    if hasattr(func, "__code__"):
+    if hasattr(func, "__code__") and func.__code__.co_code:
         tokens = [func.__code__.co_code]
         if func.__closure__ is not None:
             cvars = tuple([x.cell_contents for x in func.__closure__])
@@ -1684,10 +1684,13 @@ def _get_func_token_values(func):
         while isinstance(func, functools.partial):
             tokens.extend([func.args, func.keywords])
             func = func.func
-        if hasattr(func, "__code__"):
-            tokens.extend(_get_func_token_values(func))
-        elif isinstance(func, types.BuiltinFunctionType):
+        if (
+            isinstance(func, types.BuiltinFunctionType)
+            or "cython" in type(func).__name__
+        ):
             tokens.extend([func.__module__, func.__name__])
+        elif hasattr(func, "__code__"):
+            tokens.extend(_get_func_token_values(func))
         else:
             tokens.append(func)
         return tokens
@@ -1912,3 +1915,8 @@ def get_node_ip_address(address="8.8.8.8:53"):
         s.close()
 
     return node_ip_address
+
+
+def is_debugger_repr_thread():
+    thread_cls_name = type(threading.current_thread()).__name__
+    return "GetValue" in thread_cls_name and "Debug" in thread_cls_name

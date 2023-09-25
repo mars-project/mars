@@ -16,8 +16,9 @@ from ..utils import make_import_error_func
 from .core import xgboost, XGBScikitLearnBase
 
 
-XGBClassifier = make_import_error_func("xgboost")
-if xgboost:
+if not xgboost:
+    XGBClassifier = make_import_error_func("xgboost")
+else:
     from xgboost.sklearn import XGBClassifierBase
 
     from .... import tensor as mt

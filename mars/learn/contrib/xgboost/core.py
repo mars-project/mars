@@ -22,8 +22,9 @@ except ImportError:
 from .dmatrix import MarsDMatrix
 
 
-XGBScikitLearnBase = None
-if xgboost:
+if not xgboost:
+    XGBScikitLearnBase = None
+else:
 
     class XGBScikitLearnBase(xgboost.XGBModel):
         """

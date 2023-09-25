@@ -46,12 +46,12 @@ class MKLVersion(ctypes.Structure):
     ]
 
 
-mkl_free_buffers = None
-mkl_get_version = None
-mkl_mem_stat = None
-
 mkl_rt = _load_mkl_rt("mkl_rt")
-if mkl_rt:
+if not mkl_rt:
+    mkl_free_buffers = None
+    mkl_get_version = None
+    mkl_mem_stat = None
+else:
     try:
         mkl_free_buffers = mkl_rt.mkl_free_buffers
         mkl_free_buffers.argtypes = []
