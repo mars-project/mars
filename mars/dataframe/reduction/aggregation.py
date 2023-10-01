@@ -79,6 +79,7 @@ _agg_functions = {
     "kurt": lambda x, skipna=True, bias=False: x.kurt(skipna=skipna, bias=bias),
     "kurtosis": lambda x, skipna=True, bias=False: x.kurtosis(skipna=skipna, bias=bias),
     "nunique": lambda x: x.nunique(),
+    "mode": lambda x, skipna=True: x.mode(skipna=skipna),
 }
 
 
@@ -126,53 +127,76 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
 
         if isinstance(result_df, pd.DataFrame):
             self.output_types = [OutputType.dataframe]
-            return result_df.dtypes, result_df.index
+            return result_df.dtypes, result_df.index, 2
         elif isinstance(result_df, pd.Series):
             self.output_types = [OutputType.series]
-            return pd.Series([result_df.dtype], index=[result_df.name]), result_df.index
+            return (
+                pd.Series([result_df.dtype], index=[result_df.name]),
+                result_df.index,
+                1,
+            )
         else:
             self.output_types = [OutputType.scalar]
-            return np.array(result_df).dtype, None
+            return np.array(result_df).dtype, None, 0
 
     def __call__(self, df, output_type=None, dtypes=None, index=None):
         self._output_types = df.op.output_types
         normalize_reduction_funcs(self, ndim=df.ndim)
         if output_type is None or dtypes is None:
             with enter_mode(kernel=False, build=False):
-                dtypes, index = self._calc_result_shape(df)
+                dtypes, index, out_ndim = self._calc_result_shape(df)
         else:
             self.output_types = [output_type]
+            if output_type == OutputType.dataframe:
+                out_ndim = 2
+            elif output_type == OutputType.series:
+                out_ndim = 1
+            else:
+                out_ndim = 0
 
+        reduced_len = (
+            1 if df.ndim != out_ndim or isinstance(self.raw_func, list) else np.nan
+        )
         if self.output_types[0] == OutputType.dataframe:
             if self.axis == 0:
-                new_shape = (len(index), len(dtypes))
-                new_index = parse_index(index, store_data=True)
+                new_shape = (len(index) * reduced_len, len(dtypes))
+                new_index_value = parse_index(index, store_data=True)
+                new_dtypes = dtypes
+                new_col_name = parse_index(dtypes.index, store_data=True)
             else:
-                new_shape = (df.shape[0], len(dtypes))
-                new_index = df.index_value
+                new_shape = (df.shape[0], len(dtypes) * reduced_len)
+                new_index_value = df.index_value
+                new_dtypes = None if np.isnan(reduced_len) else dtypes
+                new_col_name = parse_index(
+                    dtypes.index, store_data=not np.isnan(reduced_len)
+                )
             return self.new_dataframe(
                 [df],
                 shape=new_shape,
-                dtypes=dtypes,
-                index_value=new_index,
-                columns_value=parse_index(dtypes.index, store_data=True),
+                dtypes=new_dtypes,
+                index_value=new_index_value,
+                columns_value=new_col_name,
             )
         elif self.output_types[0] == OutputType.series:
             if df.ndim == 1:
-                new_shape = (len(index),)
-                new_index = parse_index(index, store_data=True)
+                new_shape = (len(index) * reduced_len,)
+                new_index_value = parse_index(
+                    index, store_data=not np.isnan(reduced_len)
+                )
             elif self.axis == 0:
-                new_shape = (len(index),)
-                new_index = parse_index(index, store_data=True)
+                new_shape = (len(index) * reduced_len,)
+                new_index_value = parse_index(
+                    index, store_data=not np.isnan(reduced_len)
+                )
             else:
                 new_shape = (df.shape[0],)
-                new_index = df.index_value
+                new_index_value = df.index_value
             return self.new_series(
                 [df],
                 shape=new_shape,
                 dtype=dtypes[0],
                 name=dtypes.index[0],
-                index_value=new_index,
+                index_value=new_index_value,
             )
         elif self.output_types[0] == OutputType.tensor:
             return self.new_tileable([df], dtype=dtypes, shape=(np.nan,))
@@ -208,6 +232,9 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
 
         agg_chunks = np.empty(agg_chunks_shape, dtype=object)
         dtypes_cache = dict()
+        reduced_len = (
+            1 if in_df.ndim != out_df.ndim or isinstance(op.raw_func, list) else np.nan
+        )
         for chunk in in_df.chunks:
             input_index = chunk.index[1 - axis] if len(chunk.index) > 1 else 0
             if input_index not in input_index_to_output:
@@ -234,9 +261,9 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
 
             if map_op.output_types[0] == OutputType.dataframe:
                 if axis == 0:
-                    shape = (1, out_df.shape[-1])
+                    shape = (reduced_len, chunk.shape[-1])
                     if out_df.ndim == 2:
-                        columns_value = out_df.columns_value
+                        columns_value = chunk.columns_value
                         index_value = out_df.index_value
                     else:
                         columns_value = out_df.index_value
@@ -259,11 +286,11 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                         index_value=index_value,
                     )
                 else:
-                    shape = (out_df.shape[0], 1)
+                    shape = (chunk.shape[0], reduced_len)
                     columns_value = parse_index(
                         pd.Index([0]), out_df.key, store_data=True
                     )
-                    index_value = out_df.index_value
+                    index_value = chunk.index_value
 
                     agg_chunk = map_op.new_chunk(
                         [chunk],
@@ -273,7 +300,9 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                         index_value=index_value,
                     )
             else:
-                agg_chunk = map_op.new_chunk([chunk], shape=(1,), index=new_index)
+                agg_chunk = map_op.new_chunk(
+                    [chunk], shape=(reduced_len,), index=new_index
+                )
             agg_chunks[agg_chunk.index] = agg_chunk
         return agg_chunks
 
@@ -409,6 +438,9 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         chunks = cls._gen_map_chunks(
             op, in_df, out_df, axis_func_infos, input_index_to_output
         )
+        reduced_len = (
+            1 if in_df.ndim != out_df.ndim or isinstance(op.raw_func, list) else np.nan
+        )
         while chunks.shape[axis] > combine_size:
             if axis == 0:
                 new_chunks_shape = (
@@ -429,16 +461,16 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                         chks = chunks[i : i + combine_size, idx1]
                         chunk_index = (idx0, idx1)
                         if chks[0].ndim == 1:
-                            concat_shape = (len(chks),)
-                            agg_shape = (1,)
+                            concat_shape = (len(chks) * reduced_len,)
+                            agg_shape = (reduced_len,)
                         else:
-                            concat_shape = (len(chks), chks[0].shape[1])
-                            agg_shape = (chks[0].shape[1], 1)
+                            concat_shape = (len(chks) * reduced_len, chks[0].shape[1])
+                            agg_shape = (chks[0].shape[1], reduced_len)
                     else:
                         chks = chunks[idx1, i : i + combine_size]
                         chunk_index = (idx1, idx0)
-                        concat_shape = (chks[0].shape[0], len(chks))
-                        agg_shape = (chks[0].shape[0], 1)
+                        concat_shape = (chks[0].shape[0], len(chks) * reduced_len)
+                        agg_shape = (chks[0].shape[0], reduced_len)
 
                     chks = chks.reshape((chks.shape[0],)).tolist()
                     if len(chks) == 1:
@@ -485,12 +517,12 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             if axis == 0:
                 chks = chunks[:, idx]
                 if chks[0].ndim == 1:
-                    concat_shape = (len(chks),)
+                    concat_shape = (len(chks) * reduced_len,)
                 else:
-                    concat_shape = (len(chks), chks[0].shape[1])
+                    concat_shape = (len(chks) * reduced_len, chks[0].shape[1])
             else:
                 chks = chunks[idx, :]
-                concat_shape = (chks[0].shape[0], len(chks))
+                concat_shape = (chks[0].shape[0], len(chks) * reduced_len)
             chks = chks.reshape((chks.shape[0],)).tolist()
             chk = concat_op.new_chunk(
                 chks,
@@ -519,7 +551,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                         shape_len = len(col_index)
                     kw.update(
                         dict(
-                            shape=(out_df.shape[0], shape_len),
+                            shape=(out_df.shape[0] * reduced_len, shape_len),
                             columns_value=columns_value,
                             index=(0, idx),
                             dtypes=out_df.dtypes[columns_value.to_pandas()],
@@ -531,7 +563,10 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                         dict(
                             index=(idx, 0),
                             index_value=src_col_chunk.index_value,
-                            shape=(src_col_chunk.shape[0], out_df.shape[1]),
+                            shape=(
+                                src_col_chunk.shape[0],
+                                out_df.shape[1] * reduced_len,
+                            ),
                             dtypes=out_df.dtypes,
                         )
                     )
@@ -843,25 +878,26 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                         concat_df = concat_df.iloc[:, 0]
                 else:
                     concat_df = concat_df.iloc[:, 0]
-            concat_df.name = op.outputs[0].name
+            concat_df.name = out.name
 
-            concat_df = concat_df.astype(op.outputs[0].dtype, copy=False)
+            concat_df = concat_df.astype(out.dtype, copy=False)
         elif op.output_types[0] == OutputType.scalar:
             concat_df = concat_df.iloc[0]
             try:
-                concat_df = concat_df.astype(op.outputs[0].dtype)
+                concat_df = concat_df.astype(out.dtype)
             except AttributeError:
                 # concat_df may be a string and has no `astype` method
                 pass
         elif op.output_types[0] == OutputType.tensor:
             concat_df = xp.array(concat_df).astype(dtype=out.dtype)
         else:
-            if axis == 0:
-                concat_df = concat_df.reindex(op.outputs[0].index_value.to_pandas())
-            else:
-                concat_df = concat_df[op.outputs[0].columns_value.to_pandas()]
+            if not np.isnan(out.shape[op.axis]):
+                if axis == 0:
+                    concat_df = concat_df.reindex(out.index_value.to_pandas())
+                else:
+                    concat_df = concat_df[out.columns_value.to_pandas()]
 
-            concat_df = concat_df.astype(op.outputs[0].dtypes, copy=False)
+                concat_df = concat_df.astype(out.dtypes, copy=False)
         ctx[op.outputs[0].key] = concat_df
 
     @classmethod

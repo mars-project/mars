@@ -214,7 +214,7 @@ def _default_agg_fun(value, func_name=None, **kw):
 
 
 @functools.lru_cache(100)
-def _get_series_reduction_dtype(
+def _get_reduced_series(
     dtype,
     func_name,
     axis=None,
@@ -227,17 +227,19 @@ def _get_series_reduction_dtype(
         reduced = test_series.count()
     elif func_name == "nunique":
         reduced = test_series.nunique()
+    elif func_name == "mode":
+        reduced = test_series.mode(dropna=skipna)
     elif func_name in ("all", "any"):
         reduced = getattr(test_series, func_name)(axis=axis, bool_only=bool_only)
     elif func_name == "size":
         reduced = test_series.size
     elif func_name == "str_concat":
-        reduced = pd.Series([test_series.str.cat()])
+        reduced = test_series.str.cat()
     else:
         reduced = getattr(test_series, func_name)(
             axis=axis, skipna=skipna, numeric_only=numeric_only
         )
-    return pd.Series(reduced).dtype
+    return reduced
 
 
 @functools.lru_cache(100)
@@ -286,6 +288,9 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         elif out_df.ndim == 1:
             output_type = OutputType.tensor
             dtypes, index = out_df.dtype, None
+        elif isinstance(out_df, DATAFRAME_TYPE):  # for mode function only
+            output_type = OutputType.dataframe
+            dtypes, index = out_df.dtypes, out_df.index_value.to_pandas()
         else:
             output_type = OutputType.scalar
             dtypes, index = out_df.dtype, None
@@ -321,6 +326,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         if level is not None and axis == 1:
             raise NotImplementedError("Not support specify level for axis==1")
 
+        is_output_df = False
         if func_name == "size":
             reduced = pd.Series(
                 np.zeros(df.shape[1 - axis]),
@@ -333,6 +339,16 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             reduced = getattr(self, "custom_reduction").__call_agg__(empty_df)
             reduced_cols = list(reduced.index)
             reduced_dtype = reduced.dtype
+        elif func_name == "mode":
+            empty_df = build_df(df, ensure_string=True)
+            reduced = empty_df.mode(axis=axis, numeric_only=numeric_only, dropna=skipna)
+            is_output_df = True
+            if self._axis == 0:
+                reduced_cols = list(reduced.dtypes)
+                reduced_dtype = reduced.dtypes
+            else:
+                reduced_cols = []
+                reduced_dtype = None
         else:
             reduced_cols, dtypes = [], []
             for col, src_dt in df.dtypes.items():
@@ -374,22 +390,44 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                 else:
                     reduced_dtype = np.find_common_type(dtypes, [])
 
-        if level is not None:
-            return self._call_groupby_level(df[reduced_cols], level)
+        if is_output_df:
+            if axis == 0:
+                reduced_shape = (np.nan, len(reduced_cols))
+                reduced_index_value = parse_index(pd.RangeIndex(0), df.key)
+                reduced_columns_value = parse_index(
+                    reduced_dtype.index, store_data=True
+                )
+            else:
+                reduced_shape = (df.shape[0], np.nan)
+                reduced_index_value = df.index_value
+                reduced_columns_value = None
 
-        if axis == 0:
-            reduced_shape = (len(reduced_cols),)
-            reduced_index_value = parse_index(pd.Index(reduced_cols), store_data=True)
+            return self.new_dataframe(
+                [df],
+                shape=reduced_shape,
+                dtypes=reduced_dtype,
+                columns_value=reduced_columns_value,
+                index_value=reduced_index_value,
+            )
         else:
-            reduced_shape = (df.shape[0],)
-            reduced_index_value = parse_index(pd.RangeIndex(-1))
+            if level is not None:
+                return self._call_groupby_level(df[reduced_cols], level)
 
-        return self.new_series(
-            [df],
-            shape=reduced_shape,
-            dtype=reduced_dtype,
-            index_value=reduced_index_value,
-        )
+            if axis == 0:
+                reduced_shape = (len(reduced_cols),)
+                reduced_index_value = parse_index(
+                    pd.Index(reduced_cols), store_data=True
+                )
+            else:
+                reduced_shape = (df.shape[0],)
+                reduced_index_value = parse_index(pd.RangeIndex(-1))
+
+            return self.new_series(
+                [df],
+                shape=reduced_shape,
+                dtype=reduced_dtype,
+                index_value=reduced_index_value,
+            )
 
     def _call_series(self, series):
         level = getattr(self, "level", None)
@@ -405,12 +443,9 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
 
         if func_name == "custom_reduction":
             empty_series = build_series(series, ensure_string=True)
-            result_scalar = getattr(self, "custom_reduction").__call_agg__(empty_series)
-            if hasattr(result_scalar, "to_pandas"):  # pragma: no cover
-                result_scalar = result_scalar.to_pandas()
-            result_dtype = pd.Series(result_scalar).dtype
+            mock_result = getattr(self, "custom_reduction").__call_agg__(empty_series)
         else:
-            result_dtype = _get_series_reduction_dtype(
+            mock_result = _get_reduced_series(
                 series.dtype,
                 func_name,
                 axis=axis,
@@ -418,7 +453,22 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                 numeric_only=numeric_only,
                 skipna=skipna,
             )
-        return self.new_scalar([series], dtype=result_dtype)
+
+        if hasattr(mock_result, "to_pandas"):  # pragma: no cover
+            mock_result = mock_result.to_pandas()
+        result_dtype = pd.Series(mock_result).dtype
+        if isinstance(mock_result, pd.Series):
+            self._output_types = [OutputType.series]
+            kw = {
+                "dtype": result_dtype,
+                "index_value": parse_index(mock_result.index, store_data=False),
+                "shape": (np.nan,),
+                "name": mock_result.name,
+            }
+        else:
+            self._output_types = [OutputType.scalar]
+            kw = {"dtype": result_dtype, "shape": ()}
+        return self.new_tileable([series], **kw)
 
     def __call__(self, a):
         if is_kernel_mode() and not getattr(self, "is_atomic", False):
@@ -785,6 +835,7 @@ _func_name_to_op = dict(
     mod="%",
 )
 _func_compile_cache = dict()  # type: Dict[str, ReductionSteps]
+_equal_dim_funcs = {"mode"}
 
 
 class ReductionCompiler:
@@ -932,7 +983,10 @@ class ReductionCompiler:
             raise ValueError(
                 f"Custom function should return a Mars object, not {type(func_ret)}"
             )
-        if func_ret.ndim >= ndim:
+        if (
+            func_ret.ndim == ndim
+            and getattr(func, "name", None) not in _equal_dim_funcs
+        ) or func_ret.ndim > ndim:
             raise ValueError("Function not a reduction")
 
         agg_graph = func_ret.build_graph()

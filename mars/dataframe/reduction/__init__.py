@@ -62,6 +62,7 @@ def _install():
     from .skew import skew_dataframe, skew_series
     from .kurtosis import kurt_dataframe, kurt_series
     from .reduction_size import size_dataframe, size_series
+    from .mode import mode_dataframe, mode_series
 
     funcs = [
         ("sum", sum_series, sum_dataframe),
@@ -88,6 +89,7 @@ def _install():
         ("kurtosis", kurt_series, kurt_dataframe),
         ("unique", unique, None),
         ("_reduction_size", size_dataframe, size_series),
+        ("mode", mode_series, mode_dataframe),
     ]
     for func_name, series_func, df_func in funcs:
         if df_func is not None:  # pragma: no branch

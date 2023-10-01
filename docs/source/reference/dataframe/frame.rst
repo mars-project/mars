@@ -127,6 +127,7 @@ Computations / descriptive stats
    DataFrame.max
    DataFrame.mean
    DataFrame.min
+   DataFrame.mode
    DataFrame.nunique
    DataFrame.pct_change
    DataFrame.prod

@@ -270,6 +270,7 @@ KURTOSIS = 351
 SEM = 352
 STR_CONCAT = 353
 MAD = 354
+MODE = 355
 
 # tensor operand
 RESHAPE = 401
