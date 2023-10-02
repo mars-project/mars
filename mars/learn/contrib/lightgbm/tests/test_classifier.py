@@ -75,9 +75,7 @@ def test_local_classifier(create_cluster):
     # test sparse tensor
     X_sparse_data = X_sparse
     classifier = LGBMClassifier(n_estimators=2)
-    classifier.fit(
-        X_sparse_data, y_data, eval_set=[(X_sparse_data, y_data)]
-    )
+    classifier.fit(X_sparse_data, y_data, eval_set=[(X_sparse_data, y_data)])
     prediction = classifier.predict(X_sparse_data)
 
     assert prediction.ndim == 1
@@ -118,9 +116,7 @@ def test_local_classifier(create_cluster):
 
     # should raise error if weight.ndim > 1
     with pytest.raises(ValueError):
-        LGBMClassifier(n_estimators=2).fit(
-            X, y_df, sample_weight=mt.random.rand(1, 1)
-        )
+        LGBMClassifier(n_estimators=2).fit(X, y_df, sample_weight=mt.random.rand(1, 1))
 
     # test binary classifier
     new_y = (y_data > 0.5).astype(mt.int32)

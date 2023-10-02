@@ -312,11 +312,15 @@ def test_join_on(setup):
     expected4.set_index("a2", inplace=True)
     result4.set_index("a2", inplace=True)
     pd.testing.assert_frame_equal(
-        sort_dataframe_inplace(expected4, 0), sort_dataframe_inplace(result4, 0)
+        sort_dataframe_inplace(expected4, 0, kind="mergesort"),
+        sort_dataframe_inplace(result4, 0, kind="mergesort"),
     )
 
 
 def test_merge_one_chunk(setup):
+    def sort_by_col1(df):
+        return df.sort_values(by=df.columns[1], kind="mergesort")
+
     df1 = pd.DataFrame(
         {"lkey": ["foo", "bar", "baz", "foo"], "value": [1, 2, 3, 5]},
         index=["a1", "a2", "a3", "a4"],
@@ -348,8 +352,8 @@ def test_merge_one_chunk(setup):
     result = jdf.execute().fetch()
 
     pd.testing.assert_frame_equal(
-        expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
-        result.sort_values(by=result.columns[1]).reset_index(drop=True),
+        sort_by_col1(expected).reset_index(drop=True),
+        sort_by_col1(result).reset_index(drop=True),
     )
 
     # right have one chunk
@@ -361,8 +365,8 @@ def test_merge_one_chunk(setup):
     result = jdf.execute().fetch()
 
     pd.testing.assert_frame_equal(
-        expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
-        result.sort_values(by=result.columns[1]).reset_index(drop=True),
+        sort_by_col1(expected).reset_index(drop=True),
+        sort_by_col1(result).reset_index(drop=True),
     )
 
     # left have one chunk and how="left", then one chunk tile
@@ -377,8 +381,8 @@ def test_merge_one_chunk(setup):
     result = jdf.execute().fetch()
 
     pd.testing.assert_frame_equal(
-        expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
-        result.sort_values(by=result.columns[1]).reset_index(drop=True),
+        sort_by_col1(expected).reset_index(drop=True),
+        sort_by_col1(result).reset_index(drop=True),
     )
 
 
@@ -418,7 +422,8 @@ def test_broadcast_merge(setup):
     expected.set_index("key", inplace=True)
     result.set_index("key", inplace=True)
     pd.testing.assert_frame_equal(
-        sort_dataframe_inplace(expected, 0), sort_dataframe_inplace(result, 0)
+        sort_dataframe_inplace(expected, 0, kind="mergesort"),
+        sort_dataframe_inplace(result, 0, kind="mergesort"),
     )
 
     # test broadcast right and how="left"
@@ -438,8 +443,8 @@ def test_broadcast_merge(setup):
     expected.set_index("key", inplace=True)
     result.set_index("key", inplace=True)
     pd.testing.assert_frame_equal(
-        expected.sort_values(by=["key", "value_x"]),
-        result.sort_values(by=["key", "value_x"]),
+        expected.sort_values(by=["key", "value_x"], kind="mergesort"),
+        result.sort_values(by=["key", "value_x"], kind="mergesort"),
     )
 
     # test broadcast left
@@ -459,7 +464,8 @@ def test_broadcast_merge(setup):
     expected.set_index("key", inplace=True)
     result.set_index("key", inplace=True)
     pd.testing.assert_frame_equal(
-        sort_dataframe_inplace(expected, 0), sort_dataframe_inplace(result, 0)
+        sort_dataframe_inplace(expected, 0, kind="mergesort"),
+        sort_dataframe_inplace(result, 0, kind="mergesort"),
     )
 
     # test broadcast left and how="right"
@@ -479,8 +485,8 @@ def test_broadcast_merge(setup):
     expected.set_index("key", inplace=True)
     result.set_index("key", inplace=True)
     pd.testing.assert_frame_equal(
-        expected.sort_values(by=["key", "value_x"]),
-        result.sort_values(by=["key", "value_x"]),
+        expected.sort_values(by=["key", "value_x"], kind="mergesort"),
+        result.sort_values(by=["key", "value_x"], kind="mergesort"),
     )
 
 
