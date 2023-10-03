@@ -406,11 +406,11 @@ class LGBMTrain(MergeDictOperand):
                 op.model_type == LGBMModelType.RANKER
                 or op.model_type == LGBMModelType.REGRESSOR
             ):
-                model.set_params(out_dtype_=np.dtype("float"))
+                model.set_params(out_dtype_=[np.dtype("float")])
             elif hasattr(label_val, "dtype"):
-                model.set_params(out_dtype_=label_val.dtype)
+                model.set_params(out_dtype_=[label_val.dtype])
             else:
-                model.set_params(out_dtype_=label_val.dtypes[0])
+                model.set_params(out_dtype_=[label_val.dtypes[0]])
 
             ctx[op.outputs[0].key] = pickle.dumps(model)
         finally:
