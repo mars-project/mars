@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import copy
 import inspect
 import os
 import uuid
@@ -62,6 +63,7 @@ class CheckedSession(ObjectCheckMixin, _IsolatedSession):
         return super()._process_result(tileable, result)
 
     async def fetch(self, *tileables, **kwargs):
+        kwargs = copy.deepcopy(kwargs)
         extra_config = kwargs.pop("extra_config", dict())
         if kwargs:
             unexpected_keys = ", ".join(list(kwargs.keys()))

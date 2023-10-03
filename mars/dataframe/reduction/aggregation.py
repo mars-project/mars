@@ -139,6 +139,15 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             self.output_types = [OutputType.scalar]
             return np.array(result_df).dtype, None, 0
 
+    def _get_reduced_dim_unit(self, in_ndim, out_ndim):
+        """
+        If rows can be reduced into multiple columns, return nan,
+        otherwise returns 1
+        """
+        if not isinstance(self.raw_func, str) and isinstance(self.raw_func, Iterable):
+            return 1
+        return 1 if in_ndim != out_ndim else np.nan
+
     def __call__(self, df, output_type=None, dtypes=None, index=None):
         self._output_types = df.op.output_types
         normalize_reduction_funcs(self, ndim=df.ndim)
@@ -154,9 +163,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             else:
                 out_ndim = 0
 
-        reduced_len = (
-            1 if df.ndim != out_ndim or isinstance(self.raw_func, list) else np.nan
-        )
+        reduced_len = self._get_reduced_dim_unit(df.ndim, out_ndim)
         if self.output_types[0] == OutputType.dataframe:
             if self.axis == 0:
                 new_shape = (len(index) * reduced_len, len(dtypes))
@@ -213,7 +220,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def _gen_map_chunks(
         cls,
-        op,
+        op: "DataFrameAggregate",
         in_df,
         out_df,
         func_infos: List[ReductionSteps],
@@ -232,9 +239,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
 
         agg_chunks = np.empty(agg_chunks_shape, dtype=object)
         dtypes_cache = dict()
-        reduced_len = (
-            1 if in_df.ndim != out_df.ndim or isinstance(op.raw_func, list) else np.nan
-        )
+        reduced_len = op._get_reduced_dim_unit(in_df.ndim, out_df.ndim)
         for chunk in in_df.chunks:
             input_index = chunk.index[1 - axis] if len(chunk.index) > 1 else 0
             if input_index not in input_index_to_output:
@@ -438,9 +443,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         chunks = cls._gen_map_chunks(
             op, in_df, out_df, axis_func_infos, input_index_to_output
         )
-        reduced_len = (
-            1 if in_df.ndim != out_df.ndim or isinstance(op.raw_func, list) else np.nan
-        )
+        reduced_len = op._get_reduced_dim_unit(in_df.ndim, out_df.ndim)
         while chunks.shape[axis] > combine_size:
             if axis == 0:
                 new_chunks_shape = (
@@ -715,6 +718,8 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                     raise NotImplementedError("numeric_only not implemented under cudf")
             if isinstance(input_obj, pd.Index):
                 kwds.pop("skipna", None)
+            if getattr(input_obj, "ndim", 0) > 1:
+                kwds["axis"] = op.axis
             return getattr(input_obj, func_name)(**kwds)
 
     @classmethod
@@ -865,7 +870,19 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             ser_index = None
             if agg_series_ndim < out.ndim:
                 ser_index = [func_name]
-            aggs.append(cls._wrap_df(op, agg_series, index=ser_index))
+            if (
+                isinstance(agg_series, np.ndarray)
+                and getattr(func_inputs[0], "ndim", 0) >= 1
+                and hasattr(func_inputs[0], "index")
+            ):
+                agg_series = cls._wrap_df(op, agg_series, index=ser_index)
+                if op.axis == 0:
+                    agg_series.columns = func_inputs[0].index
+                else:
+                    agg_series.index = func_inputs[0].index
+            else:
+                agg_series = cls._wrap_df(op, agg_series, index=ser_index)
+            aggs.append(agg_series)
 
         # concatenate to produce final result
         concat_df = xdf.concat(aggs, axis=axis)
@@ -931,7 +948,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 ):
                     result = op.func[0](in_data)
                 else:
-                    result = in_data.agg(op.raw_func, axis=op.axis)
+                    result = in_data.agg(op.raw_func, axis=op.axis, **op.raw_func_kw)
                     if op.outputs[0].ndim == 1:
                         result = result.astype(op.outputs[0].dtype, copy=False)
 

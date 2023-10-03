@@ -14,11 +14,6 @@
 
 import pandas as pd
 
-try:
-    import pyarrow as pa
-except ImportError:  # pragma: no cover
-    pa = None
-
 from ... import opcodes
 from ...core import OutputType
 from ...config import options
@@ -41,6 +36,12 @@ class ModeReduction(CustomReduction):
         self._numeric_only = numeric_only
         self._dropna = dropna
 
+    @staticmethod
+    def _explode_dict_series(s: pd.Series) -> pd.DataFrame:
+        exploded = s.apply(pd.Series)
+        # if exploded.columns.hasnans:
+        return exploded
+
     def pre(self, in_data):  # noqa: W0221  # pylint: disable=arguments-differ
         xdf = cudf if self.is_gpu() else pd
         if isinstance(in_data, xdf.Series):
@@ -48,7 +49,7 @@ class ModeReduction(CustomReduction):
         else:
             if self._axis == 0:
                 data = dict()
-                for d, v in in_data.iteritems():
+                for d, v in in_data.items():
                     data[d] = [v.value_counts(dropna=self._dropna).to_dict()]
                 df = xdf.DataFrame(data)
             else:
@@ -64,7 +65,7 @@ class ModeReduction(CustomReduction):
         else:
             if self._axis == 0:
                 data = dict()
-                for d, v in in_data.iteritems():
+                for d, v in in_data.items():
                     data[d] = [v.apply(pd.Series).sum().to_dict()]
                 df = xdf.DataFrame(data)
             else:
@@ -85,9 +86,7 @@ class ModeReduction(CustomReduction):
         if isinstance(in_data, xdf.Series):
             return _handle_series(in_data)
         else:
-            in_data_iter = (
-                in_data.iteritems() if self._axis == 0 else in_data.iterrows()
-            )
+            in_data_iter = in_data.items() if self._axis == 0 else in_data.iterrows()
             s_list = []
             for d, v in in_data_iter:
                 if isinstance(v.dtype, ArrowListDtype):
@@ -126,10 +125,6 @@ class DataFrameMode(DataFrameReductionOperand, DataFrameReductionMixin):
     def tile(cls, op):
         ts = yield from super().tile(op)
         return ts
-
-    def __call__(self, *args, **kwargs):
-        t = super().__call__(*args, **kwargs)
-        return t
 
 
 def mode_dataframe(df, axis=0, numeric_only=False, dropna=True, combine_size=None):

@@ -301,7 +301,7 @@ def test_iter(setup):
     raw_data = pd.DataFrame(np.random.randint(1000, size=(20, 10)))
     df = md.DataFrame(raw_data, chunk_size=5)
 
-    for col, series in df.iteritems():
+    for col, series in df.items():
         pd.testing.assert_series_equal(series.execute().fetch(), raw_data[col])
 
     for i, batch in enumerate(df.iterbatch(batch_size=15)):
@@ -331,9 +331,7 @@ def test_iter(setup):
         pd.testing.assert_series_equal(batch, raw_data.iloc[i * 15 : (i + 1) * 15])
 
     i = 0
-    for result_item, expect_item in zip(
-        s.iteritems(batch_size=15), raw_data.iteritems()
-    ):
+    for result_item, expect_item in zip(s.items(batch_size=15), raw_data.items()):
         assert result_item[0] == expect_item[0]
         assert result_item[1] == expect_item[1]
         i += 1

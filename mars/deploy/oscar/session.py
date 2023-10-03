@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import copy
 import itertools
 import logging
 import json
@@ -355,6 +356,7 @@ class _IsolatedSession(IsolatedAsyncSession):
     async def execute(self, *tileables, **kwargs) -> ExecutionInfo:
         if self._closed:
             raise RuntimeError("Session closed already")
+        kwargs = copy.deepcopy(kwargs)
         fuse_enabled: bool = kwargs.pop("fuse_enabled", None)
         extra_config: dict = kwargs.pop("extra_config", None)
         warn_duplicated_execution: bool = kwargs.pop("warn_duplicated_execution", False)

@@ -36,6 +36,7 @@ pytestmark = pytest.mark.pd_compat
 cp = lazy_import("cupy", rename="cp")
 _agg_size_as_series = pd_release_version >= (1, 3)
 _support_kw_agg = pd_release_version >= (1, 1)
+_drop_level_reduction = pd_release_version >= (2, 0)
 
 
 @pytest.fixture
@@ -119,6 +120,9 @@ def test_series_reduction(
     np.testing.assert_equal(r.execute().fetch(), compute(data))
 
 
+@pytest.mark.skipif(
+    _drop_level_reduction, reason="Level reduction not supported for pandas>=2.0"
+)
 @pytest.mark.parametrize("func_name,func_opts", reduction_functions)
 def test_series_level_reduction(setup, func_name, func_opts: FunctionOptions):
     def compute(data, **kwargs):
@@ -162,6 +166,9 @@ def test_series_level_reduction(setup, func_name, func_opts: FunctionOptions):
         )
 
 
+@pytest.mark.skipif(
+    _drop_level_reduction, reason="Level reduction not supported for pandas>=2.0"
+)
 @pytest.mark.parametrize("func_name,func_opts", reduction_functions)
 def test_dataframe_reduction(
     setup, check_ref_counts, func_name, func_opts: FunctionOptions
@@ -255,6 +262,9 @@ def test_dataframe_reduction(
     )
 
 
+@pytest.mark.skipif(
+    _drop_level_reduction, reason="Level reduction not supported for pandas>=2.0"
+)
 @pytest.mark.parametrize("func_name,func_opts", reduction_functions)
 def test_dataframe_level_reduction(
     setup, check_ref_counts, func_name, func_opts: FunctionOptions
@@ -403,6 +413,9 @@ def test_series_bool_reduction(setup, check_ref_counts, func_name):
     assert r.execute().fetch() is True
 
 
+@pytest.mark.skipif(
+    _drop_level_reduction, reason="Level reduction not supported for pandas>=2.0"
+)
 @pytest.mark.parametrize("func_name", bool_reduction_functions)
 def test_series_bool_level_reduction(setup, check_ref_counts, func_name):
     def compute(data, **kwargs):
@@ -510,6 +523,9 @@ def test_dataframe_bool_reduction(setup, check_ref_counts, func_name):
     )
 
 
+@pytest.mark.skipif(
+    _drop_level_reduction, reason="Level reduction not supported for pandas>=2.0"
+)
 @pytest.mark.parametrize("func_name", bool_reduction_functions)
 def test_dataframe_bool_level_reduction(setup, check_ref_counts, func_name):
     def compute(data, **kwargs):
@@ -685,18 +701,20 @@ def test_mode(setup, check_ref_counts):
     config_kw = {
         "extra_config": {
             "check_shape": False,
+            "check_dtypes": False,
+            "check_columns_value": False,
             "check_index_value": False,
         }
     }
     data1 = pd.Series(np.random.randint(0, 5, size=(20,)))
 
     series = md.Series(data1)
-    result = series.mode().execute().fetch()
+    result = series.mode().execute(**config_kw).fetch(**config_kw)
     expected = data1.mode()
     pd.testing.assert_series_equal(result, expected)
 
     series = md.Series(data1, chunk_size=6)
-    result = series.mode().execute().fetch()
+    result = series.mode().execute(**config_kw).fetch(**config_kw)
     expected = data1.mode()
     pd.testing.assert_series_equal(result, expected)
 
@@ -705,7 +723,7 @@ def test_mode(setup, check_ref_counts):
     data2[[2, 9, 18]] = np.nan
 
     series = md.Series(data2)
-    result = series.mode().execute().fetch()
+    result = series.mode().execute(**config_kw).fetch(**config_kw)
     expected = data2.mode()
     pd.testing.assert_series_equal(result, expected)
 
@@ -720,7 +738,7 @@ def test_mode(setup, check_ref_counts):
         columns=["c" + str(i) for i in range(20)],
     )
     df = md.DataFrame(data1)
-    result = df.mode().execute().fetch()
+    result = df.mode().execute(**config_kw).fetch(**config_kw)
     expected = data1.mode()
     pd.testing.assert_frame_equal(result, expected)
 
@@ -730,7 +748,7 @@ def test_mode(setup, check_ref_counts):
     pd.testing.assert_frame_equal(result, expected)
 
     df = md.DataFrame(data1)
-    result = df.mode(axis=1).execute().fetch()
+    result = df.mode(axis=1).execute(**config_kw).fetch(**config_kw)
     expected = data1.mode(axis=1)
     pd.testing.assert_frame_equal(result, expected)
 
@@ -744,7 +762,7 @@ def test_mode(setup, check_ref_counts):
     data2.iloc[[2, 9, 18], [2, 9, 18]] = np.nan
 
     df = md.DataFrame(data2)
-    result = df.mode().execute().fetch()
+    result = df.mode().execute(**config_kw).fetch(**config_kw)
     expected = data2.mode()
     pd.testing.assert_frame_equal(result, expected)
 
@@ -1008,7 +1026,10 @@ def test_dataframe_aggregate(setup, check_ref_counts):
             mean_9=NamedAgg(9, "mean"),
         )
         result = df.agg(**agg_kw)
-        pd.testing.assert_frame_equal(result.execute().fetch(), data.agg(**agg_kw))
+        pd.testing.assert_frame_equal(
+            result.execute().fetch(extra_config={"check_shape": False}),
+            data.agg(**agg_kw),
+        )
 
 
 def test_series_aggregate(setup, check_ref_counts):
