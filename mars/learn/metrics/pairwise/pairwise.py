@@ -72,7 +72,7 @@ PAIRWISE_DISTANCE_FUNCTIONS = {
     "precomputed": None,  # HACK: precomputed is always allowed, never called
 }
 
-# These distances recquire boolean tensors, when using mars.tensor.spatial.distance
+# These distances require boolean tensors, when using mars.tensor.spatial.distance
 PAIRWISE_BOOLEAN_FUNCTIONS = [
     "dice",
     "jaccard",
