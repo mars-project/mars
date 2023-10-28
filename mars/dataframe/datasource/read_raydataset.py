@@ -123,9 +123,21 @@ def read_ray_dataset(ds, columns=None, incremental_index=False, **kwargs):
             from ray.data.impl.pandas_block import PandasBlockSchema
         except ImportError:  # pragma: no cover
             PandasBlockSchema = type(None)
+    try:
+        from ray.data.dataset import Schema as RayDatasetSchema
+    except ImportError:
+        RayDatasetSchema = type(None)
 
     if isinstance(schema, PandasBlockSchema):
         dtypes = pd.Series(schema.types, index=schema.names)
+    elif isinstance(schema, RayDatasetSchema):
+        dtypes = pd.Series(
+            [
+                t.to_pandas_dtype() if t is not object else np.dtype("O")
+                for t in schema.types
+            ],
+            index=schema.names,
+        )
     elif isinstance(schema, pa.Schema):
         dtypes = schema.empty_table().to_pandas().dtypes
     else:

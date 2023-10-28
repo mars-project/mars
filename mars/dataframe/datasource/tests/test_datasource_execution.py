@@ -1288,10 +1288,6 @@ def test_read_raydataset(ray_start_regular, ray_create_mars_cluster):
         pdf2,
     )
 
-    # Test simple datasets
-    with pytest.raises(NotImplementedError):
-        ray.data.range(10).to_mars()
-
 
 @require_ray
 @pytest.mark.skipif(

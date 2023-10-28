@@ -380,8 +380,10 @@ def lazy_import(
             elif locals is not None:
                 locals[rename] = real_mod
             ret = getattr(real_mod, item)
+
             for on_load_func in self._on_loads:
                 on_load_func()
+
             # make sure on_load hooks only executed once
             self._on_loads = []
             return ret
