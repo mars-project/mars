@@ -17,8 +17,9 @@ from dataclasses import asdict
 from typing import Dict, List, Callable
 
 from .....core.context import Context
+from .....session import ensure_isolation_created
 from .....storage.base import StorageLevel
-from .....typing import ChunkType
+from .....typing import ChunkType, SessionType
 from .....utils import implements, lazy_import, sync_to_async
 from ....context import ThreadedServiceContext
 from .config import RayExecutionConfig
@@ -187,12 +188,26 @@ class RayExecutionContext(_RayRemoteObjectContext, ThreadedServiceContext):
 
 
 # TODO(fyrestone): Implement more APIs for Ray.
-class RayExecutionWorkerContext(_RayRemoteObjectContext, dict):
+class RayExecutionWorkerContext(_RayRemoteObjectContext, ThreadedServiceContext, dict):
     """The context for executing operands."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        get_or_create_actor: Callable[[], "ray.actor.ActorHandle"],
+        *args,
+        **kwargs,
+    ):
+        _RayRemoteObjectContext.__init__(self, get_or_create_actor, *args, loop=None, isolation_threaded=True, **kwargs)
+        dict.__init__(self)
         self._current_chunk = None
+
+    @implements(Context.get_current_session)
+    def get_current_session(self) -> SessionType:
+        from .....session import new_session
+
+        return new_session(
+            self.supervisor_address, self.session_id, backend="ray", new=False, default=False
+        )
 
     @classmethod
     @implements(Context.new_custom_log_dir)

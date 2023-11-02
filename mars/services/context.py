@@ -47,6 +47,7 @@ class ThreadedServiceContext(Context):
         local_address: str,
         loop: asyncio.AbstractEventLoop,
         band: BandType = None,
+        isolation_threaded: bool = False,
     ):
         super().__init__(
             session_id=session_id,
@@ -59,7 +60,8 @@ class ThreadedServiceContext(Context):
         # new isolation with current loop,
         # so that session created in tile and execute
         # can get the right isolation
-        new_isolation(loop=self._loop, threaded=False)
+        logger.warning("NEW_ISOLATION in ThreadedServiceContext.__init__")
+        new_isolation(loop=self._loop, threaded=isolation_threaded)
 
         self._running_session_id = None
         self._running_op_key = None

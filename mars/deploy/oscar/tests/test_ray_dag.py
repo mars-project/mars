@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import copy
+import logging
 import os
 import time
 
 import pytest
 
 from .... import get_context
+from .... import remote as mr
 from .... import tensor as mt
 from ....session import new_session, get_default_async_session
 from ....tests import test_session
@@ -123,6 +125,35 @@ async def test_iterative_tiling(ray_start_regular_shared2, create_cluster):
 @pytest.mark.parametrize("config", [{"backend": "ray"}])
 def test_sync_execute(ray_start_regular_shared2, config):
     test_local.test_sync_execute(config)
+
+
+@require_ray
+@pytest.mark.parametrize("config", [{"backend": "ray"}])
+def test_spawn_execution(ray_start_regular_shared2, config):
+    session = new_session(
+        backend=config["backend"],
+        n_cpu=2,
+        web=False,
+        use_uvloop=False,
+        config={"task.execution_config.ray.monitor_interval_seconds": 0},
+    )
+
+    assert session._session.client.web_address is None
+    assert session.get_web_endpoint() is None
+
+    def f1(c=0):
+        if c:
+            executed = mr.spawn(f1).execute()
+            logging.warning("EXECUTE DONE!")
+            executed.fetch()
+            logging.warning("FETCH DONE!")
+        return c
+
+    with session:
+        assert 10 == mr.spawn(f1, 10).execute().fetch()
+
+    session.stop_server()
+    assert get_default_async_session() is None
 
 
 @require_ray

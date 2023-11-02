@@ -19,6 +19,7 @@ import functools
 import itertools
 import logging
 import operator
+import os
 import time
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Callable
@@ -26,7 +27,7 @@ from typing import List, Dict, Any, Callable
 import numpy as np
 
 from .....core import ChunkGraph, Chunk, TileContext
-from .....core.context import set_context
+from .....core.context import set_context, get_context
 from .....core.operand import (
     Fetch,
     Fuse,
@@ -38,6 +39,7 @@ from .....lib.aio import alru_cache
 from .....metrics.api import init_metrics, Metrics
 from .....resource import Resource
 from .....serialization import serialize, deserialize
+from .....session import AbstractSession, get_default_session
 from .....typing import BandType
 from .....utils import (
     aiotask_wrapper,
@@ -149,10 +151,12 @@ class _SubtaskGC:
 
 
 def execute_subtask(
+    session_id: str,
     subtask_id: str,
     subtask_chunk_graph: ChunkGraph,
     output_meta_n_keys: int,
     is_mapper,
+    address: str,
     *inputs,
 ):
     """
@@ -176,6 +180,9 @@ def execute_subtask(
     -------
         subtask outputs and meta for outputs if `output_meta_keys` is provided.
     """
+    logging.basicConfig(level=logging.INFO)
+    logger.setLevel(logging.INFO)
+
     init_metrics("ray")
     started_subtask_number.record(1)
     ray_task_id = ray.get_runtime_context().get_task_id()
@@ -184,7 +191,16 @@ def execute_subtask(
     # Optimize chunk graph.
     subtask_chunk_graph = _optimize_subtask_graph(subtask_chunk_graph)
     fetch_chunks, shuffle_fetch_chunk = _get_fetch_chunks(subtask_chunk_graph)
-    context = RayExecutionWorkerContext(RayTaskState.get_handle)
+
+    context = RayExecutionWorkerContext(
+        RayTaskState.get_handle,
+        session_id,
+        address,
+        address,
+        address,
+    )
+    set_context(context)
+
     if shuffle_fetch_chunk is not None:
         # The subtask is a reducer subtask.
         n_mappers = shuffle_fetch_chunk.op.n_mappers
@@ -209,19 +225,28 @@ def execute_subtask(
     # Update non shuffle inputs to context.
     context.update(zip((start_chunk.key for start_chunk in fetch_chunks), inputs))
 
-    for chunk in subtask_chunk_graph.topological_iter():
-        if chunk.key not in context:
-            try:
-                context.set_current_chunk(chunk)
-                execute(context, chunk.op)
-            except Exception:
-                logger.exception(
-                    "Execute operand %s of graph %s failed.",
-                    chunk.op,
-                    subtask_chunk_graph.to_dot(),
-                )
-                raise
-        subtask_gc.gc_inputs(chunk)
+    default_session = get_default_session()
+    try:
+        context.get_current_session().as_default()
+
+        for chunk in subtask_chunk_graph.topological_iter():
+            if chunk.key not in context:
+                try:
+                    context.set_current_chunk(chunk)
+                    execute(context, chunk.op)
+                except Exception:
+                    logger.exception(
+                        "Execute operand %s of graph %s failed.",
+                        chunk.op,
+                        subtask_chunk_graph.to_dot(),
+                    )
+                    raise
+            subtask_gc.gc_inputs(chunk)
+    finally:
+        if default_session is not None:
+            default_session.as_default()
+        else:
+            AbstractSession.reset_default()
 
     # For non-mapper subtask, output context is chunk key to results.
     # For mapper subtasks, output context is data key to results.
@@ -455,6 +480,7 @@ class RayTaskExecutor(TaskExecutor):
         task_chunks_meta: Dict[str, _RayChunkMeta],
         lifecycle_api: LifecycleAPI,
         meta_api: MetaAPI,
+        address: str,
     ):
         logger.info(
             "Start task %s with GC method %s.",
@@ -474,6 +500,8 @@ class RayTaskExecutor(TaskExecutor):
 
         self._available_band_resources = None
         self._result_tileables_lifecycle = None
+
+        self._address = address
 
         # For progress and task cancel
         self._stage_index = 0
@@ -507,6 +535,7 @@ class RayTaskExecutor(TaskExecutor):
             task_chunks_meta,
             lifecycle_api,
             meta_api,
+            address,
         )
         available_band_resources = await executor.get_available_band_resources()
         worker_addresses = list(
@@ -710,10 +739,12 @@ class RayTaskExecutor(TaskExecutor):
                 memory=subtask_memory,
                 scheduling_strategy="DEFAULT" if len(input_object_refs) else "SPREAD",
             ).remote(
+                subtask.session_id,
                 subtask.subtask_id,
                 serialize(subtask_chunk_graph, context={"serializer": "ray"}),
                 subtask.stage_n_outputs,
                 is_mapper,
+                self._address,
                 *input_object_refs,
             )
             await asyncio.sleep(0)
@@ -739,6 +770,7 @@ class RayTaskExecutor(TaskExecutor):
                 task_context[chunk_key] = object_ref
         logger.info("Submitted %s subtasks of stage %s.", len(subtask_graph), stage_id)
 
+        logger.warning("SUBTASK_RUN_1")
         monitor_context.stage = _RayExecutionStage.WAITING
         key_to_meta = {}
         if len(output_meta_object_refs) > 0:
@@ -752,6 +784,7 @@ class RayTaskExecutor(TaskExecutor):
                     self._task_chunks_meta[key] = _RayChunkMeta(memory_size=memory_size)
             logger.info("Got %s metas of stage %s.", meta_count, stage_id)
 
+        logger.warning("SUBTASK_RUN_2")
         chunk_to_meta = {}
         # ray.wait requires the object ref list is unique.
         output_object_refs = set()
@@ -773,6 +806,7 @@ class RayTaskExecutor(TaskExecutor):
         await asyncio.to_thread(ray.wait, list(output_object_refs), fetch_local=False)
 
         logger.info("Complete stage %s.", stage_id)
+        logger.warning("%d: SUBTASK_RUN_3: %r", os.getpid(), output_object_refs)
         return chunk_to_meta
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):

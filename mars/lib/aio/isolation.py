@@ -14,8 +14,11 @@
 
 import asyncio
 import atexit
+import logging
 import threading
 from typing import Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class Isolation:
@@ -30,6 +33,9 @@ class Isolation:
         self._stopped = None
         self._thread = None
         self._thread_ident = None
+
+    def __repr__(self):
+        return f"<Isolation loop={id(self.loop)}{self.loop!r} threaded={self._threaded} thread_ident={self._thread_ident}>"
 
     def _run(self):
         asyncio.set_event_loop(self.loop)
@@ -72,9 +78,11 @@ def new_isolation(
 
     if loop is None:
         loop = asyncio.new_event_loop()
+        logger.warning("NEW_LOOP %d", id(loop))
 
     isolation = Isolation(loop, threaded=threaded)
     isolation.start()
+    logger.warning("NEW_ISOLATION! loop: %r", loop)
     _name_to_isolation[name] = isolation
     return isolation
 

@@ -514,7 +514,9 @@ class _IsolatedSession(IsolatedAsyncSession):
                 chunks, chunk_metas, itertools.chain(*fetch_infos_list)
             ):
                 await fetcher.append(chunk.key, meta, fetch_info.indexes)
+            logger.warning("FETCH!! %r", fetcher)
             fetched_data = await fetcher.get()
+            logger.warning("FETCH2!!")
             for fetch_info, data in zip(
                 itertools.chain(*fetch_infos_list), fetched_data
             ):
