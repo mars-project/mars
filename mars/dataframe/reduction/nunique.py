@@ -59,7 +59,7 @@ class NuniqueReduction(CustomReduction):
         else:
             if self._axis == 0:
                 data = dict()
-                for d, v in in_data.iteritems():
+                for d, v in in_data.items():
                     if not self._use_arrow_dtype or xdf is cudf:
                         data[d] = [v.drop_duplicates().to_list()]
                     else:
@@ -82,7 +82,7 @@ class NuniqueReduction(CustomReduction):
         else:
             if self._axis == 0:
                 data = dict()
-                for d, v in in_data.iteritems():
+                for d, v in in_data.items():
                     if not self._use_arrow_dtype or xdf is cudf:
                         data[d] = [v.explode().drop_duplicates().to_list()]
                     else:
@@ -103,9 +103,7 @@ class NuniqueReduction(CustomReduction):
         if isinstance(in_data, xdf.Series):
             return in_data.explode().nunique(dropna=self._dropna)
         else:
-            in_data_iter = (
-                in_data.iteritems() if self._axis == 0 else in_data.iterrows()
-            )
+            in_data_iter = in_data.items() if self._axis == 0 else in_data.iterrows()
             data = dict()
             for d, v in in_data_iter:
                 if isinstance(v.dtype, ArrowListDtype):

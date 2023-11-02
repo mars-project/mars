@@ -125,6 +125,7 @@ Computations / descriptive stats
    Series.mean
    Series.median
    Series.min
+   Series.mode
    Series.pct_change
    Series.prod
    Series.product

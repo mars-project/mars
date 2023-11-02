@@ -175,7 +175,7 @@ class DataFrameBloomFilter(DataFrameOperand, DataFrameOperandMixin):
     def _convert_to_hashable_dtypes(cls, dtypes: pd.Series):
         dtypes = dict(
             (name, dtype) if np.issubdtype(dtype, int) else (name, str)
-            for name, dtype in dtypes.iteritems()
+            for name, dtype in dtypes.items()
         )
         return dtypes
 
