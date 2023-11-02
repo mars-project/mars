@@ -144,11 +144,11 @@ class VineyardStorage(StorageBackend):
             vineyard_store = None
         else:
             vineyard_store = vineyard.deploy.local.start_vineyardd(
-                etcd_endpoints,
-                etcd_prefix,
-                vineyardd_path,
-                vineyard_size,
-                vineyard_socket,
+                etcd_endpoints=etcd_endpoints,
+                etcd_prefix=etcd_prefix,
+                vineyardd_path=vineyardd_path,
+                size=vineyard_size,
+                socket=vineyard_socket,
                 rpc=False,
             )
             vineyard_socket = (

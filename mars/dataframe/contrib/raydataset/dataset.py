@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import operator
 from functools import reduce
 
@@ -55,8 +56,9 @@ def to_ray_dataset(df, num_shards: int = None):
         state.pop("dataframe", None)
         return state
 
-    # `dataframe` is not serializable by ray.
-    dataset.__getstate__ = __getstate__
+    if not hasattr(type(dataset), "__getstate__"):
+        # if `dataframe` is not serializable by ray, patch our implementation
+        dataset.__getstate__ = __getstate__
     return dataset
 
 

@@ -89,7 +89,9 @@ jobs:
               ./ci/install-hadoop.sh
               echo "import coverage; coverage.process_startup()" > \
                 $(python -c "import site; print(site.getsitepackages()[-1])")/coverage.pth
-              conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein libffi conda-pack
+              sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+              sudo apt install -y g++-11
+              conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein libffi conda-pack "grpcio<1.54"
             fi
             if [ -n "$WITH_VINEYARD" ]; then
               pip install vineyard -i https://pypi.org/simple
@@ -104,8 +106,7 @@ jobs:
               rm -fr /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz /tmp/etcd-download-test
             fi
             if [ -n "$WITH_RAY" ] || [ -n "$WITH_RAY_DAG" ] || [ -n "$WITH_RAY_DEPLOY" ]; then
-              pip install "ray>=1.8.0,<2.4.0"
-              pip install "xgboost_ray<0.1.14" "protobuf<4"
+              pip install "ray>=1.8.0,<2.4.0" "xgboost<2" "xgboost_ray<0.1.14" "protobuf<4"
               # Ray Datasets need pyarrow>=6.0.1
               pip install "pyarrow>=6.0.1"
               pip install lightgbm

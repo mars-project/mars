@@ -53,7 +53,7 @@ def test_linear_regression(setup):
     assert_array_almost_equal(reg.predict(X), model.predict(X))
 
     # Regular model fitting, #samples <= 2, # features < 2
-    error_msg = re.escape("Does not support sigular matrix!")
+    error_msg = re.escape("Does not support singular matrix!")
 
     X = [[1], [2]]
     Y = [1, 2]
@@ -69,7 +69,7 @@ def test_linear_regression(setup):
     assert_array_almost_equal(reg.predict(X), model.predict(X))
 
     # Extra case #1: singular matrix, degenerate input
-    error_msg = re.escape("Does not support sigular matrix!")
+    error_msg = re.escape("Does not support singular matrix!")
 
     X = [[1]]
     Y = [0]

@@ -78,7 +78,7 @@ class LGBMPredict(LearnOperand, LearnOperandMixin):
         elif hasattr(self.model, "classes_"):
             dtype = np.array(self.model.classes_).dtype
         else:
-            dtype = getattr(self.model, "out_dtype_", np.dtype("float"))
+            dtype = getattr(self.model, "out_dtype_", [np.dtype("float")])[0]
 
         if self.output_types[0] == OutputType.tensor:
             # tensor

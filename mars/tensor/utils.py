@@ -774,7 +774,7 @@ def fetch_corner_data(tensor, session=None):
     # the tensor must have been executed,
     # thus the size could not be NaN
     if tensor.size > threshold:
-        # two edges for each exis
+        # two edges for each axis
         indices_iter = list(itertools.product(*(range(2) for _ in range(tensor.ndim))))
         corners = np.empty(shape=(2,) * tensor.ndim, dtype=object)
         shape = [0 for _ in range(tensor.ndim)]

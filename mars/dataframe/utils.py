@@ -106,9 +106,9 @@ def hash_dtypes(dtypes, size):
     return [dtypes[index] for index in hashed_indexes]
 
 
-def sort_dataframe_inplace(df, *axis):
+def sort_dataframe_inplace(df, *axis, **kw):
     for ax in axis:
-        df.sort_index(axis=ax, inplace=True)
+        df.sort_index(axis=ax, inplace=True, **kw)
     return df
 
 
