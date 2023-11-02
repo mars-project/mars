@@ -55,9 +55,15 @@ from .transpose import transpose
 def _install():
     from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
     from .standardize_range_index import ChunkStandardizeRangeIndex
+    from .categorical import _categorical_method_to_handlers
     from .string_ import _string_method_to_handlers
     from .datetimes import _datetime_method_to_handlers
-    from .accessor import StringAccessor, DatetimeAccessor, CachedAccessor
+    from .accessor import (
+        CachedAccessor,
+        CategoricalAccessor,
+        DatetimeAccessor,
+        StringAccessor,
+    )
 
     for t in DATAFRAME_TYPE:
         setattr(t, "to_gpu", to_gpu)
@@ -134,6 +140,10 @@ def _install():
         setattr(t, "is_monotonic_increasing", property(fget=is_monotonic_increasing))
         setattr(t, "is_monotonic_decreasing", property(fget=is_monotonic_decreasing))
 
+    for method in _categorical_method_to_handlers:
+        if not hasattr(CategoricalAccessor, method):
+            CategoricalAccessor._register(method)
+
     for method in _string_method_to_handlers:
         if not hasattr(StringAccessor, method):
             StringAccessor._register(method)
@@ -143,8 +153,9 @@ def _install():
             DatetimeAccessor._register(method)
 
     for series in SERIES_TYPE:
-        series.str = CachedAccessor("str", StringAccessor)
+        series.cat = CachedAccessor("cat", CategoricalAccessor)
         series.dt = CachedAccessor("dt", DatetimeAccessor)
+        series.str = CachedAccessor("str", StringAccessor)
 
 
 _install()

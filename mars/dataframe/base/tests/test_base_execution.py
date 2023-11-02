@@ -700,6 +700,37 @@ def test_transform_with_arrow_dtype_execution(setup):
     pd.testing.assert_series_equal(result, expected)
 
 
+def test_categorical_method_execution(setup):
+    with pytest.raises(AttributeError):
+        series = from_pandas_series(pd.Series([0, 1]))
+        series.cat.add_categories(["err"])
+
+    s = pd.Series(["a", "c", "d", "b"], dtype="category")
+    s2 = pd.concat([s, s, s]).astype(pd.CategoricalDtype(ordered=True))
+
+    series = from_pandas_series(s, chunk_size=2)
+    series2 = from_pandas_series(s2, chunk_size=2)
+
+    assert not series.cat.ordered
+    assert series2.cat.ordered
+
+    pd.testing.assert_index_equal(
+        series.cat.categories.execute().fetch(),
+        pd.Index(["a", "b", "c", "d"]),
+    )
+    pd.testing.assert_series_equal(series.cat.codes.execute().fetch(), s.cat.codes)
+    pd.testing.assert_series_equal(
+        series.cat.add_categories("e").execute().fetch(),
+        s.cat.add_categories("e"),
+    )
+
+    pd.testing.assert_series_equal(series2.cat.codes.execute().fetch(), s2.cat.codes)
+    pd.testing.assert_series_equal(
+        series2.cat.add_categories("e").execute().fetch(),
+        s2.cat.add_categories("e"),
+    )
+
+
 def test_string_method_execution(setup):
     s = pd.Series(["s1,s2", "ef,", "dd", np.nan])
     s2 = pd.concat([s, s, s])
@@ -1567,6 +1598,11 @@ def test_astype(setup):
     series = from_pandas_series(raw, chunk_size=6)
     result = series.astype(pd.CategoricalDtype(["a", "c", "b", "d"])).execute().fetch()
     expected = raw.astype(pd.CategoricalDtype(["a", "c", "b", "d"]))
+    pd.testing.assert_series_equal(expected, result)
+
+    series = from_pandas_series(raw, chunk_size=6)
+    result = series.astype(pd.CategoricalDtype(ordered=True)).execute().fetch()
+    expected = raw.astype(pd.CategoricalDtype(ordered=True))
     pd.testing.assert_series_equal(expected, result)
 
 

@@ -45,32 +45,32 @@ from .tseries.to_datetime import to_datetime
 
 from . import arithmetic
 from . import base
+from . import datastore
+from . import groupby
 from . import indexing
 from . import merge as merge_
 from . import missing
-from . import reduction
-from . import statistics
-from . import sort
-from . import groupby
-from . import ufunc
-from . import datastore
-from . import window
 from . import plotting
+from . import reduction
+from . import sort
+from . import statistics
+from . import ufunc
+from . import window
 
 del (
-    reduction,
-    statistics,
     arithmetic,
+    base,
+    datastore,
+    groupby,
     indexing,
     merge_,
-    base,
-    groupby,
     missing,
-    ufunc,
-    datastore,
-    sort,
-    window,
     plotting,
+    reduction,
+    sort,
+    statistics,
+    ufunc,
+    window,
 )
 del DataFrameFetch, DataFrameFetchShuffle
 
