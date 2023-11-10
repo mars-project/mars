@@ -14,7 +14,7 @@
 
 from typing import List
 
-from ....core import OperandType, TileableType, CHUNK_TYPE
+from ....core import OperandType, TileableType, Chunk
 from ....dataframe.base.value_counts import DataFrameValueCounts
 from ....dataframe.datasource.core import HeadOptimizedDataSource
 from ....dataframe.sort.core import DataFrameSortOperand
@@ -84,7 +84,7 @@ class HeadPushDown(OperandBasedOptimizationRule):
         new_input_params.update(input_node.extra_params)
         new_entity = (
             new_input_op.new_tileable
-            if not isinstance(node, CHUNK_TYPE)
+            if not isinstance(node, Chunk)
             else new_input_op.new_chunk
         )
         new_input_node = new_entity(input_node.inputs, kws=[new_input_params]).data
@@ -120,9 +120,7 @@ class HeadPushDown(OperandBasedOptimizationRule):
             params = node.params.copy()
             params.update(node.extra_params)
             new_entity = (
-                new_op.new_tileable
-                if not isinstance(node, CHUNK_TYPE)
-                else new_op.new_chunk
+                new_op.new_tileable if not isinstance(node, Chunk) else new_op.new_chunk
             )
             new_node = new_entity([new_input_node], kws=[params]).data
             self._replace_node(node, new_node)

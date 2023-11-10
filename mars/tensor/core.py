@@ -24,7 +24,6 @@ import numpy as np
 
 from ..core import (
     HasShapeTileable,
-    ChunkData,
     Chunk,
     HasShapeTileableData,
     OutputType,
@@ -56,9 +55,9 @@ class TensorOrder(Enum):
     F_ORDER = "F"
 
 
-class TensorChunkData(ChunkData):
+class TensorChunk(Chunk):
     __slots__ = ()
-    _no_copy_attrs_ = ChunkData._no_copy_attrs_ | {"dtype"}
+    _no_copy_attrs_ = Chunk._no_copy_attrs_ | {"dtype"}
     type_name = "Tensor"
 
     # required fields
@@ -159,15 +158,6 @@ class TensorChunkData(ChunkData):
         return np.prod(self.shape) * self.dtype.itemsize
 
 
-class TensorChunk(Chunk):
-    __slots__ = ()
-    _allow_data_type_ = (TensorChunkData,)
-    type_name = "Tensor"
-
-    def __len__(self):
-        return len(self._data)
-
-
 class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
     __slots__ = ()
     type_name = "Tensor"
@@ -178,12 +168,7 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
     )
     # optional fields
     _dtype = DataTypeField("dtype")
-    _chunks = ListField(
-        "chunks",
-        FieldTypes.reference(TensorChunkData),
-        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
-        on_deserialize=lambda x: [TensorChunk(it) for it in x] if x is not None else x,
-    )
+    _chunks = ListField("chunks", FieldTypes.reference(TensorChunk))
 
     def __init__(
         self,
@@ -723,7 +708,7 @@ class Indexes(Serializable):
 
 
 TENSOR_TYPE = (Tensor, TensorData)
-TENSOR_CHUNK_TYPE = (TensorChunk, TensorChunkData)
+TENSOR_CHUNK_TYPE = (TensorChunk,)
 
 register_output_types(OutputType.tensor, TENSOR_TYPE, TENSOR_CHUNK_TYPE)
 register_output_types(OutputType.scalar, TENSOR_TYPE, TENSOR_CHUNK_TYPE)

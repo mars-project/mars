@@ -26,7 +26,7 @@ from typing import (
     Union,
 )
 
-from ....core import FUSE_CHUNK_TYPE, CHUNK_TYPE, TILEABLE_TYPE
+from ....core import FuseChunk, TILEABLE_TYPE, Chunk
 from ....typing import EntityType, TileableType, ChunkType
 from ....utils import copy_tileables, build_fetch
 from ...entity.tileables import handler
@@ -223,7 +223,7 @@ class Tiler:
             chunks = []
             if need_process is not None:
                 for t in need_process:
-                    if isinstance(t, CHUNK_TYPE):
+                    if isinstance(t, Chunk):
                         chunks.append(self._get_data(t))
                     elif isinstance(t, TILEABLE_TYPE):
                         to_update_tileables.append(self._get_data(t))
@@ -304,7 +304,7 @@ class Tiler:
             # so that fetch chunk can be generated.
             # Use chunk key as the key to make sure the copied chunk can be build to a fetch.
             processed_chunks = (
-                c.chunk.key if isinstance(c, FUSE_CHUNK_TYPE) else c.key
+                c.chunk.key if isinstance(c, FuseChunk) else c.key
                 for c in chunk_graph.result_chunks
             )
             self._processed_chunks.update(processed_chunks)
@@ -406,7 +406,7 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
         if entity.key in self._processed_chunks:
             if entity not in self._chunk_to_fetch:
                 # gen fetch
-                fetch_chunk = build_fetch(entity).data
+                fetch_chunk = build_fetch(entity)
                 self._chunk_to_fetch[entity] = fetch_chunk
             return self._chunk_to_fetch[entity]
         return entity
@@ -417,7 +417,7 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
             if inp.key in self._processed_chunks:
                 # gen fetch
                 if inp not in self._chunk_to_fetch:
-                    fetch_chunk = build_fetch(inp).data
+                    fetch_chunk = build_fetch(inp)
                     self._chunk_to_fetch[inp] = fetch_chunk
                 new_inputs.append(self._chunk_to_fetch[inp])
             else:

@@ -18,7 +18,7 @@ from functools import reduce
 import numpy as np
 import pandas as pd
 
-from ..core import FuseChunkData, FuseChunk, ENTITY_TYPE, OutputType
+from ..core import FuseChunk, ENTITY_TYPE, OutputType
 from ..core.operand import (
     Operand,
     TileableOperandMixin,
@@ -471,9 +471,7 @@ class DataFrameFuseChunkMixin(FuseChunkMixin, DataFrameOperandMixin):
     __slots__ = ()
 
     def _create_chunk(self, output_idx, index, **kw):
-        data = FuseChunkData(_index=index, _shape=kw.pop("shape", None), _op=self, **kw)
-
-        return FuseChunk(data)
+        return FuseChunk(_index=index, _shape=kw.pop("shape", None), _op=self, **kw)
 
 
 class DataFrameFuseChunk(Fuse, DataFrameFuseChunkMixin):

@@ -20,7 +20,7 @@ from ..core import (
     OptimizationRecord,
     OptimizationRecordType,
 )
-from ....core import OperandType, TileableType, CHUNK_TYPE
+from ....core import OperandType, TileableType, Chunk
 from ....dataframe.datasource.core import ColumnPruneSupportedDataSourceMixin
 from ....dataframe.utils import parse_index
 from ....utils import implements
@@ -104,7 +104,7 @@ class PruneDataSource(OperandBasedOptimizationRule, metaclass=ABCMeta):
         data_source_node = self._graph.predecessors(node)[0]
 
         if (
-            isinstance(node, CHUNK_TYPE)
+            isinstance(node, Chunk)
             and self._graph.count_successors(data_source_node) == 1
         ):
             # merge into data source only for chunk
@@ -121,7 +121,7 @@ class PruneDataSource(OperandBasedOptimizationRule, metaclass=ABCMeta):
                 )
             new_entity = (
                 data_source_op.new_tileable
-                if not isinstance(node, CHUNK_TYPE)
+                if not isinstance(node, Chunk)
                 else data_source_op.new_chunk
             )
             new_data_source_node = new_entity(
@@ -193,7 +193,7 @@ class PruneDataSource(OperandBasedOptimizationRule, metaclass=ABCMeta):
                 kws.append(params)
             new_entity = (
                 new_op.new_tileables
-                if not isinstance(node, CHUNK_TYPE)
+                if not isinstance(node, Chunk)
                 else new_op.new_chunks
             )
             new_outputs = [t.data for t in new_entity([new_data_source_node], kws=kws)]
@@ -228,7 +228,7 @@ class GetitemPruneDataSource(PruneDataSource):
             and op.col_names is not None
         ):
             selected_columns = self._get_selected_columns(op)
-            if not isinstance(op.outputs[0], CHUNK_TYPE) and not selected_columns:
+            if not isinstance(op.outputs[0], Chunk) and not selected_columns:
                 # no columns selected, skip
                 return False
             return True

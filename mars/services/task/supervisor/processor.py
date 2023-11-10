@@ -269,8 +269,7 @@ class TaskProcessor:
                 continue
             tiled_tileable = self._preprocessor.tile_context.get(tileable)
             if tiled_tileable is not None:
-                tileable_chunks = [c.data for c in tiled_tileable.chunks]
-                if any(c not in result_chunks for c in tileable_chunks):
+                if any(c not in result_chunks for c in tiled_tileable.chunks):
                     continue
                 tile_context[tileable] = tiled_tileable
                 collected.add(tileable)
@@ -305,7 +304,7 @@ class TaskProcessor:
         from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
         from ....tensor.core import TENSOR_TYPE
 
-        chunks = [c.data for c in tileable.chunks]
+        chunks = tileable.chunks
         if isinstance(tileable, DATAFRAME_TYPE):
             for c in chunks:
                 i, j = c.index
@@ -315,13 +314,13 @@ class TaskProcessor:
                 shape = shape if not update_shape else [None, None]
                 if i > 0:
                     # update dtypes_value
-                    c0j = chunk_to_result[tileable.cix[0, j].data].meta
+                    c0j = chunk_to_result[tileable.cix[0, j]].meta
                     meta["dtypes_value"] = c0j["dtypes_value"]
                     if update_shape:
                         shape[1] = c0j["shape"][1]
                 if j > 0:
                     # update index_value
-                    ci0 = chunk_to_result[tileable.cix[i, 0].data].meta
+                    ci0 = chunk_to_result[tileable.cix[i, 0]].meta
                     meta["index_value"] = ci0["index_value"]
                     if update_shape:
                         shape[0] = ci0["shape"][0]
@@ -344,7 +343,7 @@ class TaskProcessor:
                     for i, ind in enumerate(c.index):
                         ind0 = [0] * ndim
                         ind0[i] = ind
-                        c0 = tileable.cix[tuple(ind0)].data
+                        c0 = tileable.cix[tuple(ind0)]
                         shape.append(chunk_to_result[c0].meta["shape"][i])
                     meta["shape"] = tuple(shape)
                 if i > 0:

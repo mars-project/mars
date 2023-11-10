@@ -29,7 +29,7 @@ def test_to_csv():
     assert r.chunk_shape[1] == 1
     for i, c in enumerate(r.chunks):
         assert type(c.op).__name__ == "DataFrameToCSV"
-        assert c.inputs[0] is r.inputs[0].chunks[i].data
+        assert c.inputs[0] is r.inputs[0].chunks[i]
 
     # test one file
     r = df.to_csv("out.csv")
@@ -38,5 +38,5 @@ def test_to_csv():
     assert r.chunk_shape[1] == 1
     for i, c in enumerate(r.chunks):
         assert len(c.inputs) == 2
-        assert c.inputs[0].inputs[0] is r.inputs[0].chunks[i].data
+        assert c.inputs[0].inputs[0] is r.inputs[0].chunks[i]
         assert type(c.inputs[1].op).__name__ == "DataFrameToCSVStat"

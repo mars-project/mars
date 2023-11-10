@@ -15,7 +15,7 @@
 import functools
 from enum import Enum
 
-from .fuse import FUSE_CHUNK_TYPE
+from .fuse import FuseChunk
 from .objects import OBJECT_TYPE, OBJECT_CHUNK_TYPE
 
 
@@ -84,7 +84,7 @@ def get_output_types(*objs, unknown_as=None):
     for obj in objs:
         if obj is None:
             continue
-        elif isinstance(obj, FUSE_CHUNK_TYPE):
+        elif isinstance(obj, FuseChunk):
             obj = obj.chunk
 
         try:

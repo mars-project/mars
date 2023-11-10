@@ -58,8 +58,8 @@ def test_groupby_read_csv(gen_data1):
         graph, fuse_enabled=False, tile_context=context
     )
     chunk_graph = next(chunk_graph_builder.build())
-    chunk1 = context[df1.data].chunks[0].data
-    chunk2 = context[df2.data].chunks[0].data
+    chunk1 = context[df1.data].chunks[0]
+    chunk2 = context[df2.data].chunks[0]
     records = optimize(chunk_graph)
     opt_chunk1 = records.get_optimization_result(chunk1)
     assert opt_chunk1 is None

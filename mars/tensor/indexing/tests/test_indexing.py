@@ -196,8 +196,8 @@ def test_bool_indexing_tiles():
     assert len(indexed.chunks) == 280
     assert indexed.chunks[0].index == (0,)
     assert indexed.chunks[20].index == (20,)
-    assert indexed.chunks[20].inputs[0] is t.cix[(0, 2, 0)].data
-    assert indexed.chunks[20].inputs[1] is indexed.op.indexes[0].cix[0, 2, 0].data
+    assert indexed.chunks[20].inputs[0] is t.cix[(0, 2, 0)]
+    assert indexed.chunks[20].inputs[1] is indexed.op.indexes[0].cix[0, 2, 0]
 
     t = ones((100, 200, 300), chunk_size=30)
     t2 = ones((100, 200), chunk_size=30)
@@ -208,8 +208,8 @@ def test_bool_indexing_tiles():
     assert len(indexed2.chunks[0].shape) == 2
     assert np.isnan(indexed2.chunks[0].shape[0])
     assert indexed2.chunks[0].shape[1] == 30
-    assert indexed2.chunks[20].inputs[0] == t.cix[(0, 2, 0)].data
-    assert indexed2.chunks[20].inputs[1] == indexed2.op.indexes[0].cix[0, 2].data
+    assert indexed2.chunks[20].inputs[0] == t.cix[(0, 2, 0)]
+    assert indexed2.chunks[20].inputs[1] == indexed2.op.indexes[0].cix[0, 2]
 
 
 def test_slice_tiles():
@@ -218,10 +218,10 @@ def test_slice_tiles():
     t, t2 = tile(t, t2)
 
     assert t2.chunk_shape == (2, 1, 1)
-    assert t2.chunks[0].inputs[0] == t.cix[0, -1, -1].data
+    assert t2.chunks[0].inputs[0] == t.cix[0, -1, -1]
     assert t2.chunks[0].op.indexes == [slice(10, 30, 1), slice(19, 20, 1), slice(None)]
     assert t2.chunks[0].index == (0, 0, 0)
-    assert t2.chunks[1].inputs[0] == t.cix[1, -1, -1].data
+    assert t2.chunks[1].inputs[0] == t.cix[1, -1, -1]
     assert t2.chunks[1].op.indexes == [slice(0, 10, 1), slice(19, 20, 1), slice(None)]
     assert t2.chunks[1].index == (1, 0, 0)
 
@@ -232,7 +232,7 @@ def test_indices_indexing_tiles():
     t, t2 = tile(t, t2)
 
     assert len(t2.chunks) == 1
-    assert t2.chunks[0].inputs[0] is t.cix[1, 0, 0].data
+    assert t2.chunks[0].inputs[0] is t.cix[1, 0, 0]
     assert t2.chunks[0].op.indexes[0] == 1
 
     t = ones((10, 20, 30), chunk_size=(2, 20, 30))
@@ -240,7 +240,7 @@ def test_indices_indexing_tiles():
     t, t3 = tile(t, t3)
 
     assert len(t3.chunks) == 1
-    assert t3.chunks[0].inputs[0] is t.cix[2, 0, 0].data
+    assert t3.chunks[0].inputs[0] is t.cix[2, 0, 0]
     assert t3.chunks[0].op.indexes[0] == 0
 
 
@@ -259,7 +259,7 @@ def test_mixed_indexing_tiles():
         5,
         slice(None),
         None,
-        cmp.cix[(0,)].data,
+        cmp.cix[(0,)],
     ]
 
 

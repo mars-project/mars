@@ -19,7 +19,7 @@ from typing import List, Dict, Union
 
 import numpy as np
 
-from ....core import ChunkGraph, ChunkData
+from ....core import ChunkGraph, Chunk
 from ....core.operand import Operand, Fetch
 from ....lib.ordered_set import OrderedSet
 from ....resource import Resource
@@ -43,7 +43,7 @@ class AbstractGraphAssigner(ABC):
         self._band_resource = band_resource
 
     @abstractmethod
-    def assign(self, cur_assigns: Dict[str, str] = None) -> Dict[ChunkData, BandType]:
+    def assign(self, cur_assigns: Dict[str, str] = None) -> Dict[Chunk, BandType]:
         """
         Assign start nodes to bands.
 
@@ -136,7 +136,7 @@ class GraphAssigner(AbstractGraphAssigner):
     def _assign_by_bfs(
         cls,
         undirected_chunk_graph: ChunkGraph,
-        start: ChunkData,
+        start: Chunk,
         band: BandType,
         initial_sizes: Dict[BandType, int],
         spread_limits: Dict[BandType, float],
@@ -167,9 +167,7 @@ class GraphAssigner(AbstractGraphAssigner):
                 break
         initial_sizes[band] -= assigned
 
-    def _build_undirected_chunk_graph(
-        self, chunk_to_assign: List[ChunkData]
-    ) -> ChunkGraph:
+    def _build_undirected_chunk_graph(self, chunk_to_assign: List[Chunk]) -> ChunkGraph:
         chunk_graph = self._chunk_graph.copy()
         # remove edges for all chunk_to_assign which may contain chunks
         # that need be reassigned
@@ -180,9 +178,7 @@ class GraphAssigner(AbstractGraphAssigner):
         return chunk_graph.build_undirected()
 
     @implements(AbstractGraphAssigner.assign)
-    def assign(
-        self, cur_assigns: Dict[str, BandType] = None
-    ) -> Dict[ChunkData, BandType]:
+    def assign(self, cur_assigns: Dict[str, BandType] = None) -> Dict[Chunk, BandType]:
         graph = self._chunk_graph
         assign_result = dict()
         cur_assigns = cur_assigns or dict()

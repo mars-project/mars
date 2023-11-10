@@ -232,7 +232,7 @@ def test_without_shuffle(func_name, func_opts):
         assert c.inputs[0].op.stage == OperandStage.map
         left_row_idx, left_row_inner_idx = left_index_idx_to_original_idx[idx[0]]
         left_col_idx, left_col_inner_idx = left_columns_idx_to_original_idx[idx[1]]
-        expect_df1_input = df1.cix[left_row_idx, left_col_idx].data
+        expect_df1_input = df1.cix[left_row_idx, left_col_idx]
         assert c.inputs[0].inputs[0] is expect_df1_input
         left_index_min_max = left_index_splits[left_row_idx][left_row_inner_idx]
         assert c.inputs[0].op.index_min == left_index_min_max[0]
@@ -259,7 +259,7 @@ def test_without_shuffle(func_name, func_opts):
         assert c.inputs[1].op.stage == OperandStage.map
         right_row_idx, right_row_inner_idx = right_index_idx_to_original_idx[idx[0]]
         right_col_idx, right_col_inner_idx = right_columns_idx_to_original_idx[idx[1]]
-        expect_df2_input = df2.cix[right_row_idx, right_col_idx].data
+        expect_df2_input = df2.cix[right_row_idx, right_col_idx]
         assert c.inputs[1].inputs[0] is expect_df2_input
         right_index_min_max = right_index_splits[right_row_idx][right_row_inner_idx]
         assert c.inputs[1].op.index_min == right_index_min_max[0]
@@ -320,7 +320,7 @@ def test_dataframe_and_series_with_align_map(func_name, func_opts):
         assert isinstance(c.inputs[0].op, DataFrameIndexAlign)
         assert c.inputs[0].op.stage == OperandStage.map
         left_col_idx, left_col_inner_idx = left_columns_idx_to_original_idx[idx[1]]
-        expect_df1_input = df1.cix[idx[0], left_col_idx].data
+        expect_df1_input = df1.cix[idx[0], left_col_idx]
         assert c.inputs[0].inputs[0] is expect_df1_input
         left_column_min_max = left_columns_splits[left_col_idx][left_col_inner_idx]
         assert c.inputs[0].op.column_min == left_column_min_max[0]
@@ -341,7 +341,7 @@ def test_dataframe_and_series_with_align_map(func_name, func_opts):
         assert isinstance(c.inputs[1].op, DataFrameIndexAlign)
         assert c.inputs[1].op.stage == OperandStage.map
         right_row_idx, right_row_inner_idx = right_index_idx_to_original_idx[idx[1]]
-        expect_s1_input = s1.cix[(right_row_idx,)].data
+        expect_s1_input = s1.cix[(right_row_idx,)]
         assert c.inputs[1].inputs[0] is expect_s1_input
         right_index_min_max = right_index_splits[right_row_idx][right_row_inner_idx]
         assert c.inputs[1].op.index_min == right_index_min_max[0]
@@ -389,10 +389,10 @@ def test_dataframe_and_series_identical(func_name, func_opts):
 
         # test the left side
         assert isinstance(c.inputs[0].op, DataFrameDataSource)
-        assert c.inputs[0] is df1.cix[c.index].data
+        assert c.inputs[0] is df1.cix[c.index]
         # test the right side
         assert isinstance(c.inputs[1].op, SeriesDataSource)
-        assert c.inputs[1] is s1.cix[(c.index[1],)].data
+        assert c.inputs[1] is s1.cix[(c.index[1],)]
 
 
 @pytest.mark.parametrize("func_name, func_opts", binary_functions.items())
@@ -448,11 +448,11 @@ def test_dataframe_and_series_with_shuffle(func_name, func_opts):
             assert ci.index == (idx[0], j)
             assert ci.op.column_shuffle_size
             shuffle_segments = ci.op.column_shuffle_segments
-            expected_shuffle_segments = hash_dtypes(ic.data.dtypes, 2)
+            expected_shuffle_segments = hash_dtypes(ic.dtypes, 2)
             assert len(shuffle_segments) == len(expected_shuffle_segments)
             for ss, ess in zip(shuffle_segments, expected_shuffle_segments):
                 pd.testing.assert_series_equal(ss, ess)
-            assert ci.inputs[0] is ic.data
+            assert ci.inputs[0] is ic
 
         # test the right side
         assert isinstance(c.inputs[1].op, DataFrameIndexAlign)
@@ -466,7 +466,7 @@ def test_dataframe_and_series_with_shuffle(func_name, func_opts):
             assert ci.op.stage == OperandStage.map
             assert ci.index == (j,)
             assert ci.op.index_shuffle_size
-            assert ci.inputs[0] is ic.data
+            assert ci.inputs[0] is ic
 
     # make sure shuffle proxies' key are different
     proxy_keys = set()
@@ -518,7 +518,7 @@ def test_series_and_series_with_align_map(func_name, func_opts):
         assert isinstance(c.inputs[0].op, DataFrameIndexAlign)
         assert c.inputs[0].op.stage == OperandStage.map
         left_col_idx, left_col_inner_idx = left_index_idx_to_original_idx[idx[0]]
-        expect_s1_input = s1.cix[(left_col_idx,)].data
+        expect_s1_input = s1.cix[(left_col_idx,)]
         assert c.inputs[0].inputs[0] is expect_s1_input
         left_index_min_max = left_index_splits[left_col_idx][left_col_inner_idx]
         assert c.inputs[0].op.index_min == left_index_min_max[0]
@@ -539,7 +539,7 @@ def test_series_and_series_with_align_map(func_name, func_opts):
         assert isinstance(c.inputs[1].op, DataFrameIndexAlign)
         assert c.inputs[1].op.stage == OperandStage.map
         right_row_idx, right_row_inner_idx = right_index_idx_to_original_idx[idx[0]]
-        expect_s2_input = s2.cix[(right_row_idx,)].data
+        expect_s2_input = s2.cix[(right_row_idx,)]
         assert c.inputs[1].inputs[0] is expect_s2_input
         right_index_min_max = right_index_splits[right_row_idx][right_row_inner_idx]
         assert c.inputs[1].op.index_min == right_index_min_max[0]
@@ -583,10 +583,10 @@ def test_series_and_series_identical(func_name, func_opts):
 
         # test the left side
         assert isinstance(c.inputs[0].op, SeriesDataSource)
-        assert c.inputs[0] is s1.cix[c.index].data
+        assert c.inputs[0] is s1.cix[c.index]
         # test the right side
         assert isinstance(c.inputs[1].op, SeriesDataSource)
-        assert c.inputs[1] is s2.cix[c.index].data
+        assert c.inputs[1] is s2.cix[c.index]
 
 
 @pytest.mark.parametrize("func_name, func_opts", binary_functions.items())
@@ -628,7 +628,7 @@ def test_series_and_series_with_shuffle(func_name, func_opts):
             assert ci.op.stage == OperandStage.map
             assert ci.index == (j,)
             assert ci.op.index_shuffle_size
-            assert ci.inputs[0] is ic.data
+            assert ci.inputs[0] is ic
 
         # test the right side
         assert isinstance(c.inputs[1].op, DataFrameIndexAlign)
@@ -642,7 +642,7 @@ def test_series_and_series_with_shuffle(func_name, func_opts):
             assert ci.op.stage == OperandStage.map
             assert ci.index == (j,)
             assert ci.op.index_shuffle_size
-            assert ci.inputs[0] is ic.data
+            assert ci.inputs[0] is ic
 
     # make sure shuffle proxies' key are different
     proxy_keys = set()
@@ -695,9 +695,9 @@ def test_identical_index_and_columns(func_name, func_opts):
         )
 
         # test the left side
-        assert c.inputs[0] is df1.cix[c.index].data
+        assert c.inputs[0] is df1.cix[c.index]
         # test the right side
-        assert c.inputs[1] is df2.cix[c.index].data
+        assert c.inputs[1] is df2.cix[c.index]
 
 
 @pytest.mark.parametrize("func_name, func_opts", binary_functions.items())
@@ -782,11 +782,11 @@ def test_with_one_shuffle(func_name, func_opts):
             assert isinstance(ci.index_value.to_pandas(), type(data1.index))
             assert ci.op.column_shuffle_size
             shuffle_segments = ci.op.column_shuffle_segments
-            expected_shuffle_segments = hash_dtypes(ic.data.dtypes, 2)
+            expected_shuffle_segments = hash_dtypes(ic.dtypes, 2)
             assert len(shuffle_segments) == len(expected_shuffle_segments)
             for ss, ess in zip(shuffle_segments, expected_shuffle_segments):
                 pd.testing.assert_series_equal(ss, ess)
-            assert ci.inputs[0] is ic.data
+            assert ci.inputs[0] is ic
         # test the right side
         assert isinstance(c.inputs[1].op, DataFrameIndexAlign)
         assert c.inputs[1].op.stage == OperandStage.reduce
@@ -815,11 +815,11 @@ def test_with_one_shuffle(func_name, func_opts):
             assert ci.op.index_max_close == right_index_min_max[3]
             assert ci.op.column_shuffle_size
             shuffle_segments = ci.op.column_shuffle_segments
-            expected_shuffle_segments = hash_dtypes(ic.data.dtypes, 2)
+            expected_shuffle_segments = hash_dtypes(ic.dtypes, 2)
             assert len(shuffle_segments) == len(expected_shuffle_segments)
             for ss, ess in zip(shuffle_segments, expected_shuffle_segments):
                 pd.testing.assert_series_equal(ss, ess)
-            assert ci.inputs[0] is ic.data
+            assert ci.inputs[0] is ic
 
     # make sure shuffle proxies' key are different
     proxy_keys = set()
@@ -898,11 +898,11 @@ def test_with_all_shuffle(func_name, func_opts):
             assert ic.op.column_shuffle_size == 2
             assert ic.columns_value is not None
             shuffle_segments = ic.op.column_shuffle_segments
-            expected_shuffle_segments = hash_dtypes(ci.data.dtypes, 2)
+            expected_shuffle_segments = hash_dtypes(ci.dtypes, 2)
             assert len(shuffle_segments) == len(expected_shuffle_segments)
             for ss, ess in zip(shuffle_segments, expected_shuffle_segments):
                 pd.testing.assert_series_equal(ss, ess)
-            assert ic.inputs[0] is ci.data
+            assert ic.inputs[0] is ci
         # test right side
         assert isinstance(c.inputs[1].op, DataFrameIndexAlign)
         assert c.inputs[1].op.stage == OperandStage.reduce
@@ -928,11 +928,11 @@ def test_with_all_shuffle(func_name, func_opts):
             assert ic.op.column_shuffle_size == 2
             assert ic.columns_value is not None
             shuffle_segments = ic.op.column_shuffle_segments
-            expected_shuffle_segments = hash_dtypes(ci.data.dtypes, 2)
+            expected_shuffle_segments = hash_dtypes(ci.dtypes, 2)
             assert len(shuffle_segments) == len(expected_shuffle_segments)
             for ss, ess in zip(shuffle_segments, expected_shuffle_segments):
                 pd.testing.assert_series_equal(ss, ess)
-            assert ic.inputs[0] is ci.data
+            assert ic.inputs[0] is ci
 
     assert len(proxy_keys) == 2
 
@@ -998,11 +998,11 @@ def test_with_all_shuffle(func_name, func_opts):
             assert ic.op.column_shuffle_size == 4
             assert ic.columns_value is not None
             shuffle_segments = ic.op.column_shuffle_segments
-            expected_shuffle_segments = hash_dtypes(ci.data.dtypes, 4)
+            expected_shuffle_segments = hash_dtypes(ci.dtypes, 4)
             assert len(shuffle_segments) == len(expected_shuffle_segments)
             for ss, ess in zip(shuffle_segments, expected_shuffle_segments):
                 pd.testing.assert_series_equal(ss, ess)
-            assert ic.inputs[0] is ci.data
+            assert ic.inputs[0] is ci
         # test right side
         assert isinstance(c.inputs[1].op, DataFrameIndexAlign)
         assert c.inputs[1].op.stage == OperandStage.reduce
@@ -1028,11 +1028,11 @@ def test_with_all_shuffle(func_name, func_opts):
             assert ic.op.column_shuffle_size == 4
             assert ic.columns_value is not None
             shuffle_segments = ic.op.column_shuffle_segments
-            expected_shuffle_segments = hash_dtypes(ci.data.dtypes, 4)
+            expected_shuffle_segments = hash_dtypes(ci.dtypes, 4)
             assert len(shuffle_segments) == len(expected_shuffle_segments)
             for ss, ess in zip(shuffle_segments, expected_shuffle_segments):
                 pd.testing.assert_series_equal(ss, ess)
-            assert ic.inputs[0] is ci.data
+            assert ic.inputs[0] is ci
 
     assert len(proxy_keys) == 2
 
@@ -1095,7 +1095,7 @@ def test_without_shuffle_and_with_one_chunk(func_name, func_opts):
         assert isinstance(c.inputs[0].op, DataFrameIndexAlign)
         assert c.inputs[0].op.stage == OperandStage.map
         left_row_idx, left_row_inner_idx = left_index_idx_to_original_idx[idx[0]]
-        expect_df1_input = df1.cix[left_row_idx, 0].data
+        expect_df1_input = df1.cix[left_row_idx, 0]
         assert c.inputs[0].inputs[0] is expect_df1_input
         left_index_min_max = left_index_splits[left_row_idx][left_row_inner_idx]
         assert c.inputs[0].op.index_min == left_index_min_max[0]
@@ -1124,7 +1124,7 @@ def test_without_shuffle_and_with_one_chunk(func_name, func_opts):
         assert isinstance(c.inputs[1].op, DataFrameIndexAlign)
         assert c.inputs[1].op.stage == OperandStage.map
         right_row_idx, right_row_inner_idx = right_index_idx_to_original_idx[idx[0]]
-        expect_df2_input = df2.cix[right_row_idx, 0].data
+        expect_df2_input = df2.cix[right_row_idx, 0]
         assert c.inputs[1].inputs[0] is expect_df2_input
         right_index_min_max = right_index_splits[right_row_idx][right_row_inner_idx]
         assert c.inputs[1].op.index_min == right_index_min_max[0]
@@ -1190,9 +1190,9 @@ def test_both_one_chunk(func_name, func_opts):
         assert isinstance(c.op, func_opts.op)
         assert len(c.inputs) == 2
         # test the left side
-        assert c.inputs[0] is df1.chunks[0].data
+        assert c.inputs[0] is df1.chunks[0]
         # test the right side
-        assert c.inputs[1] is df2.chunks[0].data
+        assert c.inputs[1] is df2.chunks[0]
 
 
 @pytest.mark.parametrize("func_name, func_opts", binary_functions.items())
@@ -1262,13 +1262,13 @@ def test_with_shuffle_and_one_chunk(func_name, func_opts):
             assert ic.op.column_max_close == ci.columns_value.max_val_close
             assert ic.op.column_shuffle_size is None
             assert ic.columns_value is not None
-            assert ic.inputs[0] is ci.data
+            assert ic.inputs[0] is ci
         # test right side
         assert isinstance(c.inputs[1].op, DataFrameIndexAlign)
         assert c.inputs[1].op.stage == OperandStage.reduce
         expect_dtypes = pd.concat(
             [
-                ic.inputs[0].op.data.dtypes
+                ic.inputs[0].op.dtypes
                 for ic in c.inputs[1].inputs[0].inputs
                 if ic.index[0] == 0
             ]
@@ -1292,7 +1292,7 @@ def test_with_shuffle_and_one_chunk(func_name, func_opts):
             assert ic.op.column_max_close == ci.columns_value.max_val_close
             assert ic.op.column_shuffle_size is None
             assert ic.columns_value is not None
-            assert ic.inputs[0] is ci.data
+            assert ic.inputs[0] is ci
 
     assert len(proxy_keys) == 2
 
@@ -1327,9 +1327,9 @@ def test_on_same_dataframe(func_name, func_opts):
         assert isinstance(c.op, func_opts.op)
         assert len(c.inputs) == 2
         # test the left side
-        assert c.inputs[0] is df.cix[c.index].data
+        assert c.inputs[0] is df.cix[c.index]
         # test the right side
-        assert c.inputs[1] is df.cix[c.index].data
+        assert c.inputs[1] is df.cix[c.index]
 
 
 @pytest.mark.parametrize("func_name, func_opts", binary_functions.items())
@@ -1522,7 +1522,7 @@ def test_arithmetic_lazy_chunk_meta():
     df2 = df + 1
     df2 = tile(df2)
 
-    chunk = df2.chunks[0].data
+    chunk = df2.chunks[0]
     assert chunk._FIELDS["_dtypes"].get(chunk) is None
     pd.testing.assert_series_equal(chunk.dtypes, df.dtypes)
     assert chunk._FIELDS["_dtypes"].get(chunk) is not None

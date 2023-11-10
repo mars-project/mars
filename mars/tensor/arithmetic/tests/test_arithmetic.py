@@ -56,10 +56,10 @@ def test_add():
     assert t3.key != k1
     assert t3.shape == (3, 4)
     assert len(t3.chunks) == 4
-    assert t3.chunks[0].inputs == [t1.chunks[0].data, t2.chunks[0].data]
-    assert t3.chunks[1].inputs == [t1.chunks[1].data, t2.chunks[1].data]
-    assert t3.chunks[2].inputs == [t1.chunks[2].data, t2.chunks[0].data]
-    assert t3.chunks[3].inputs == [t1.chunks[3].data, t2.chunks[1].data]
+    assert t3.chunks[0].inputs == [t1.chunks[0], t2.chunks[0]]
+    assert t3.chunks[1].inputs == [t1.chunks[1], t2.chunks[1]]
+    assert t3.chunks[2].inputs == [t1.chunks[2], t2.chunks[0]]
+    assert t3.chunks[3].inputs == [t1.chunks[3], t2.chunks[1]]
     assert t3.op.dtype == np.dtype("f8")
     assert t3.chunks[0].op.dtype == np.dtype("f8")
 
@@ -68,18 +68,18 @@ def test_add():
     t1, t4 = tile(t1, t4)
     assert t4.shape == (3, 4)
     assert len(t3.chunks) == 4
-    assert t4.chunks[0].inputs == [t1.chunks[0].data]
+    assert t4.chunks[0].inputs == [t1.chunks[0]]
     assert t4.chunks[0].op.rhs == 1
-    assert t4.chunks[1].inputs == [t1.chunks[1].data]
+    assert t4.chunks[1].inputs == [t1.chunks[1]]
     assert t4.chunks[1].op.rhs == 1
-    assert t4.chunks[2].inputs == [t1.chunks[2].data]
+    assert t4.chunks[2].inputs == [t1.chunks[2]]
     assert t4.chunks[2].op.rhs == 1
-    assert t4.chunks[3].inputs == [t1.chunks[3].data]
+    assert t4.chunks[3].inputs == [t1.chunks[3]]
     assert t4.chunks[3].op.rhs == 1
 
     t5 = add([1, 2, 3, 4], 1)
     tile(t5)
-    assert t4.chunks[0].inputs == [t1.chunks[0].data]
+    assert t4.chunks[0].inputs == [t1.chunks[0]]
 
     t2 = ones(4, chunk_size=2)
     t6 = ones((3, 4), chunk_size=2, gpu=True)
@@ -350,10 +350,10 @@ def test_unify_chunk_add():
     t1, t2, t3 = tile(t1, t2, t3)
 
     assert len(t3.chunks) == 2
-    assert t3.chunks[0].inputs[0] == t1.chunks[0].data
-    assert t3.chunks[0].inputs[1] == t2.chunks[0].data
-    assert t3.chunks[1].inputs[0] == t1.chunks[1].data
-    assert t3.chunks[1].inputs[1] == t2.chunks[0].data
+    assert t3.chunks[0].inputs[0] == t1.chunks[0]
+    assert t3.chunks[0].inputs[1] == t2.chunks[0]
+    assert t3.chunks[1].inputs[0] == t1.chunks[1]
+    assert t3.chunks[1].inputs[1] == t2.chunks[0]
 
 
 def test_frexp():

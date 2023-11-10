@@ -15,7 +15,7 @@
 import numpy as np
 
 from ... import opcodes
-from ...core import ENTITY_TYPE, CHUNK_TYPE, recursive_tile
+from ...core import ENTITY_TYPE, recursive_tile, Chunk
 from ...core.custom_log import redirect_custom_log
 from ...serialization.serializables import (
     FunctionField,
@@ -162,7 +162,7 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
         if op.with_chunk_index:
             kwargs["chunk_index"] = out_chunk.index
 
-        chunks = find_objects(args, CHUNK_TYPE) + find_objects(kwargs, CHUNK_TYPE)
+        chunks = find_objects(args, Chunk) + find_objects(kwargs, Chunk)
         mapping = {chunk: ctx[chunk.key] for chunk in chunks}
         args = replace_objects(args, mapping)
         kwargs = replace_objects(kwargs, mapping)
