@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import functools
-import weakref
+import itertools
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List, Optional, Type, Set
 
-from ...core import OperandType, EntityType, enter_mode
+from ...core import OperandType, EntityType, enter_mode, Entity
 from ...core.graph import EntityGraph
 from ...utils import implements
 
@@ -91,8 +91,6 @@ class OptimizationRecords:
 
 
 class OptimizationRule(ABC):
-    _preds_to_remove = weakref.WeakKeyDictionary()
-
     def __init__(
         self,
         graph: EntityGraph,
@@ -130,34 +128,91 @@ class OptimizationRule(ABC):
         for succ in successors:
             self._graph.add_edge(new_node, succ)
 
-    def _add_collapsable_predecessor(self, node: EntityType, predecessor: EntityType):
-        pred_original = self._records.get_original_entity(predecessor, predecessor)
-        if predecessor not in self._preds_to_remove:
-            self._preds_to_remove[pred_original] = {node}
-        else:
-            self._preds_to_remove[pred_original].add(node)
+    def _replace_subgraph(
+        self,
+        graph: Optional[EntityGraph],
+        nodes_to_remove: Optional[Set[EntityType]],
+        new_results: Optional[List[Entity]] = None,
+    ):
+        """
+        Replace the subgraph from the self._graph represented by a list of nodes with input graph.
+        It will delete the nodes in removed_nodes with all linked edges first, and then add (or update if it's still
+        existed in self._graph) the nodes and edges of the input graph.
 
-    def _remove_collapsable_predecessors(self, node: EntityType):
-        node = self._records.get_optimization_result(node) or node
-        preds_opt_to_remove = []
-        for pred in self._graph.predecessors(node):
-            pred_original = self._records.get_original_entity(pred, pred)
-            pred_opt = self._records.get_optimization_result(pred, pred)
+        Parameters
+        ----------
+        graph : EntityGraph, optional
+            The input graph. If it's none, no new node and edge will be added.
+        nodes_to_remove : Set[EntityType], optional
+            The nodes to be removed. All the edges connected with them are removed as well.
+        new_results : List[Entity], optional, default None
+            The new results to be replaced to the original by their keys.
 
-            if pred_opt in self._graph.results or pred_original in self._graph.results:
-                continue
-            affect_succ = self._preds_to_remove.get(pred_original) or []
-            affect_succ_opt = [
-                self._records.get_optimization_result(s, s) for s in affect_succ
-            ]
-            if all(s in affect_succ_opt for s in self._graph.successors(pred)):
-                preds_opt_to_remove.append((pred_original, pred_opt))
+        Raises
+        ------
+        ValueError
+            1. If the input key of the removed node's successor can't be found in the subgraph.
+            2. Or some of the nodes of the subgraph are in removed ones.
+            3. Or some of the removed nodes are also in the results.
+            4. Or the key of the new result can't be found in the original results.
+        """
+        affected_successors = set()
+        output_to_node = dict()
+        nodes_to_remove = nodes_to_remove or set()
+        new_results = new_results or list()
+        result_indices = {
+            result.key: idx for idx, result in enumerate(self._graph.results)
+        }
 
-        for pred_original, pred_opt in preds_opt_to_remove:
-            self._graph.remove_node(pred_opt)
-            self._records.append_record(
-                OptimizationRecord(pred_original, None, OptimizationRecordType.delete)
-            )
+        if graph is not None:
+            # Add the output key -> node of the subgraph
+            for node in graph.iter_nodes():
+                if node in nodes_to_remove:
+                    raise ValueError(f"The node {node} is in the removed set")
+                for output in node.outputs:
+                    output_to_node[output.key] = node
+
+        # Add the output key -> node of the original graph
+        for node in self._graph.iter_nodes():
+            if node not in nodes_to_remove:
+                for output in node.outputs:
+                    output_to_node[output.key] = node
+
+        # Check if the updated result is valid
+        for result in new_results:
+            if result.key not in result_indices:
+                raise ValueError(f"Unknown result {result} to replace")
+            if result.key not in output_to_node:
+                raise ValueError(f"The result {result} is missing in the updated graph")
+
+        for node in nodes_to_remove:
+            for affected_successor in self._graph.iter_successors(node):
+                if affected_successor not in nodes_to_remove:
+                    affected_successors.add(affected_successor)
+        # Check whether affected successors' inputs are in subgraph
+        for affected_successor in affected_successors:
+            for inp in affected_successor.inputs:
+                if inp.key not in output_to_node:
+                    raise ValueError(
+                        f"The output {inp} of node {affected_successor} is missing in the subgraph"
+                    )
+        # Here all the pre-check are passed, we start to replace the subgraph
+        for node in nodes_to_remove:
+            self._graph.remove_node(node)
+
+        if graph is None:
+            return
+
+        for node in graph.iter_nodes():
+            self._graph.add_node(node)
+
+        for node in itertools.chain(graph.iter_nodes(), affected_successors):
+            for inp in node.inputs:
+                pred_node = output_to_node[inp.key]
+                self._graph.add_edge(pred_node, node)
+
+        for result in new_results:
+            self._graph.results[result_indices[result.key]] = result
 
 
 class OperandBasedOptimizationRule(OptimizationRule):
