@@ -46,10 +46,7 @@ class TaskProcessor:
     _stage_tileables: Set[TileableType]
 
     def __init__(
-        self,
-        task: Task,
-        preprocessor: TaskPreprocessor,
-        executor: TaskExecutor,
+        self, task: Task, preprocessor: TaskPreprocessor, executor: TaskExecutor,
     ):
         self._task = task
         self._preprocessor = preprocessor
@@ -184,10 +181,7 @@ class TaskProcessor:
             stage_profiler.set("total", stage_timer.duration)
 
     async def _process_stage_chunk_graph(
-        self,
-        stage_id: str,
-        stage_profiler,
-        chunk_graph: ChunkGraph,
+        self, stage_id: str, stage_profiler, chunk_graph: ChunkGraph,
     ):
         available_bands = await self._executor.get_available_band_resources()
         meta_api = self._executor._meta_api
@@ -462,8 +456,7 @@ class TaskProcessor:
             serialization = ProfilingData[self._task.task_id, "serialization"]
             if not serialization.empty():
                 serialization.set(
-                    "total",
-                    sum(serialization.values()),
+                    "total", sum(serialization.values()),
                 )
             data = ProfilingData.pop(self._task.task_id)
             self.result.profiling = {

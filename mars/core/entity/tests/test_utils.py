@@ -64,14 +64,7 @@ def test_recursive_tile_with_duplicated_submission(setup):
     raw = np.random.RandomState(0).rand(10)
     d1 = mt.tensor(raw, chunk_size=5)
     op = _TestOperandWithDuplicatedSubmission()
-    t = op.new_tensor(
-        [
-            d1,
-        ],
-        dtype=d1.dtype,
-        shape=(10,),
-        order=d1.order,
-    )
+    t = op.new_tensor([d1,], dtype=d1.dtype, shape=(10,), order=d1.order,)
 
     with pytest.raises(RuntimeError, match="submitted repeatedly"):
         t.execute(extra_config={"check_duplicated_submission": True})

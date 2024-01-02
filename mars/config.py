@@ -364,7 +364,7 @@ default_options.register_option("combine_size", 4, validator=is_integer, seriali
 
 # the default chunk store size
 default_options.register_option(
-    "chunk_store_limit", 128 * 1024**2, validator=is_numeric
+    "chunk_store_limit", 128 * 1024 ** 2, validator=is_numeric
 )
 default_options.register_option(
     "chunk_size", None, validator=any_validator(is_null, is_integer), serialize=True

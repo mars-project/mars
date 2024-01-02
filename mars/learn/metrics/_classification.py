@@ -48,7 +48,7 @@ class AccuracyScore(LearnOperand, LearnOperandMixin):
         normalize=None,
         sample_weight=None,
         type_true=None,
-        **kw
+        **kw,
     ):
         super().__init__(
             _y_true=y_true,
@@ -56,7 +56,7 @@ class AccuracyScore(LearnOperand, LearnOperandMixin):
             _normalize=normalize,
             _sample_weight=sample_weight,
             _type_true=type_true,
-            **kw
+            **kw,
         )
         self.output_types = [OutputType.tensor]
 
@@ -347,7 +347,7 @@ def multilabel_confusion_matrix(
     labels=None,
     samplewise=False,
     session=None,
-    run_kwargs=None
+    run_kwargs=None,
 ):
     """
     Compute a confusion matrix for each class or sample.
@@ -699,7 +699,7 @@ def precision_recall_fscore_support(
     sample_weight=None,
     zero_division="warn",
     session=None,
-    run_kwargs=None
+    run_kwargs=None,
 ):
     """Compute precision, recall, F-measure and support for each class
 
@@ -888,7 +888,7 @@ def precision_recall_fscore_support(
     execute(true_sum, **exec_kw)
 
     # Finally, we have all our sufficient statistics. Divide! #
-    beta2 = beta**2
+    beta2 = beta ** 2
 
     # Divide, and on zero-division, set scores and/or warn according to
     # zero_division:
@@ -960,7 +960,7 @@ def precision_score(
     pos_label=1,
     average="binary",
     sample_weight=None,
-    zero_division="warn"
+    zero_division="warn",
 ):
     """Compute the precision
 
@@ -1086,7 +1086,7 @@ def recall_score(
     pos_label=1,
     average="binary",
     sample_weight=None,
-    zero_division="warn"
+    zero_division="warn",
 ):
     """Compute the recall
 
@@ -1211,7 +1211,7 @@ def f1_score(
     pos_label=1,
     average="binary",
     sample_weight=None,
-    zero_division="warn"
+    zero_division="warn",
 ):
     """Compute the F1 score, also known as balanced F-score or F-measure
 
@@ -1347,7 +1347,7 @@ def fbeta_score(
     pos_label=1,
     average="binary",
     sample_weight=None,
-    zero_division="warn"
+    zero_division="warn",
 ):
     """Compute the F-beta score
 
@@ -1473,6 +1473,7 @@ def fbeta_score(
         zero_division=zero_division,
     )
     return f
+
 
 def classification_report(
     y_true,
@@ -1695,7 +1696,6 @@ def classification_report(
         return report_dict
     else:
         return report
-
 
     # @validate_params(
     # {

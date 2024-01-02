@@ -27,9 +27,7 @@ from .....core.operand import (
     ShuffleProxy,
 )
 from .....lib.aio import alru_cache
-from .....oscar.profiling import (
-    ProfilingData,
-)
+from .....oscar.profiling import ProfilingData
 from .....resource import Resource
 from .....typing import TileableType, BandType
 from .....utils import Timer

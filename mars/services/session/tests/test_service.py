@@ -36,10 +36,7 @@ async def test_session_service(test_web):
     async with pool:
         config = {
             "services": ["cluster", "session", "meta"],
-            "cluster": {
-                "backend": "fixed",
-                "lookup_address": pool.external_address,
-            },
+            "cluster": {"backend": "fixed", "lookup_address": pool.external_address,},
             "meta": {"store": "dict"},
         }
         if test_web:
@@ -181,10 +178,7 @@ async def test_dmap():
                 "task",
                 "mutable",
             ],
-            "cluster": {
-                "backend": "fixed",
-                "lookup_address": pool.external_address,
-            },
+            "cluster": {"backend": "fixed", "lookup_address": pool.external_address,},
             "meta": {"store": "dict"},
         }
         await start_services(NodeRole.SUPERVISOR, config, address=pool.external_address)

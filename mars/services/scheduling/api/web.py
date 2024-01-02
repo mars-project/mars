@@ -51,10 +51,7 @@ class SchedulingWebAPIHandler(MarsServiceWebAPIHandler):
                         "task_id": summary.task_id,
                         "subtask_id": summary.subtask_id,
                         "bands": [
-                            {
-                                "endpoint": band[0],
-                                "band_name": band[1],
-                            }
+                            {"endpoint": band[0], "band_name": band[1],}
                             for band in summary.bands
                         ],
                         "num_reschedules": summary.num_reschedules,

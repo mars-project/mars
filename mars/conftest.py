@@ -55,7 +55,7 @@ def ray_start_regular_shared2(request):  # pragma: no cover
     os.environ["RAY_kill_idle_workers_interval_ms"] = "0"
     param = getattr(request, "param", {})
     num_cpus = param.get("num_cpus", 64)
-    total_memory_mb = num_cpus * 2 * 1024**2
+    total_memory_mb = num_cpus * 2 * 1024 ** 2
     try:
         try:
             job_config = ray.job_config.JobConfig(total_memory_mb=total_memory_mb)
@@ -81,7 +81,7 @@ def _ray_start_regular(request):  # pragma: no cover
         yield
     else:
         num_cpus = param.get("num_cpus", 64)
-        total_memory_mb = num_cpus * 2 * 1024**2
+        total_memory_mb = num_cpus * 2 * 1024 ** 2
         try:
             try:
                 job_config = ray.job_config.JobConfig(total_memory_mb=total_memory_mb)
@@ -117,12 +117,12 @@ def _ray_large_cluster(request):  # pragma: no cover
     remote_nodes = []
     for i in range(num_nodes):
         remote_nodes.append(
-            cluster.add_node(num_cpus=num_cpus, memory=num_cpus * 2 * 1024**3)
+            cluster.add_node(num_cpus=num_cpus, memory=num_cpus * 2 * 1024 ** 3)
         )
         if len(remote_nodes) == 1:
             try:
                 job_config = ray.job_config.JobConfig(
-                    total_memory_mb=num_nodes * 32 * 1024**3
+                    total_memory_mb=num_nodes * 32 * 1024 ** 3
                 )
             except TypeError:
                 job_config = None
@@ -153,10 +153,10 @@ async def ray_create_mars_cluster(request, check_router_cleaned):
 
     ray_config = _load_config()
     param = getattr(request, "param", {})
-    supervisor_mem = param.get("supervisor_mem", 1 * 1024**3)
+    supervisor_mem = param.get("supervisor_mem", 1 * 1024 ** 3)
     worker_num = param.get("worker_num", 2)
     worker_cpu = param.get("worker_cpu", 2)
-    worker_mem = param.get("worker_mem", 256 * 1024**2)
+    worker_mem = param.get("worker_mem", 256 * 1024 ** 2)
     ray_config.update(param.get("config", {}))
     client = await new_cluster(
         supervisor_mem=supervisor_mem,

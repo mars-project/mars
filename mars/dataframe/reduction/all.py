@@ -100,13 +100,7 @@ def all_series(
 
 
 def all_dataframe(
-    df,
-    axis=0,
-    bool_only=None,
-    skipna=True,
-    level=None,
-    combine_size=None,
-    method=None,
+    df, axis=0, bool_only=None, skipna=True, level=None, combine_size=None, method=None,
 ):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     output_types = [OutputType.series] if axis is not None else [OutputType.scalar]

@@ -34,9 +34,7 @@ except ImportError:  # pragma: no cover
 
 @require_ray
 @pytest.mark.parametrize(
-    "ray_large_cluster",
-    [{"num_nodes": 0}],
-    indirect=True,
+    "ray_large_cluster", [{"num_nodes": 0}], indirect=True,
 )
 @pytest.mark.parametrize("reconstruction_enabled", [True, False])
 @pytest.mark.skipif(
@@ -65,7 +63,7 @@ def test_basic_object_reconstruction(
     )
     ray.init(address=cluster.address)
     # Node to place the initial object.
-    node_to_kill = cluster.add_node(num_cpus=1, object_store_memory=10**8)
+    node_to_kill = cluster.add_node(num_cpus=1, object_store_memory=10 ** 8)
     mars.new_session(
         backend="ray",
         config={"scheduling.subtask_max_retries": subtask_max_retries},
@@ -82,7 +80,7 @@ def test_basic_object_reconstruction(
     head5 = df2.head(5).to_pandas()
 
     cluster.remove_node(node_to_kill, allow_graceful=False)
-    node_to_kill = cluster.add_node(num_cpus=1, object_store_memory=10**8)
+    node_to_kill = cluster.add_node(num_cpus=1, object_store_memory=10 ** 8)
 
     # use a dependent_task to avoid fetch lost objects to local
     @ray.remote
@@ -102,7 +100,7 @@ def test_basic_object_reconstruction(
     # Losing the object a second time will cause reconstruction to fail because
     # we have reached the max task retries.
     cluster.remove_node(node_to_kill, allow_graceful=False)
-    cluster.add_node(num_cpus=1, object_store_memory=10**8)
+    cluster.add_node(num_cpus=1, object_store_memory=10 ** 8)
 
     if reconstruction_enabled:
         with pytest.raises(ObjectReconstructionFailedMaxAttemptsExceededError):

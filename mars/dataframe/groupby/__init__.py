@@ -30,9 +30,7 @@ def _install():
 
     # Just for enabling custom agg function registration.
     # Therefore, del this immediately after import.
-    from .nunique import (
-        DataFrameCustomGroupByNuniqueMixin,
-    )
+    from .nunique import DataFrameCustomGroupByNuniqueMixin
 
     del DataFrameCustomGroupByNuniqueMixin
 

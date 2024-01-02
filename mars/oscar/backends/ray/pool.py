@@ -85,9 +85,7 @@ class RayMainActorPool(MainActorPoolBase):
 
     @classmethod
     def create_sub_pool(
-        cls,
-        main_pool_address,
-        sub_pool_address,
+        cls, main_pool_address, sub_pool_address,
     ):
         pg_name, bundle_index, process_index = process_address_to_placement(
             sub_pool_address

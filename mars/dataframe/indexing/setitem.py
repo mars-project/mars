@@ -268,7 +268,9 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                                 value_chunks, shape=shape, dtypes=dtypes
                             )
                     else:
-                        value_chunk = value.cix[c.index[0],]
+                        value_chunk = value.cix[
+                            c.index[0],
+                        ]
 
                     chunk_inputs = [c, value_chunk]
 
@@ -278,9 +280,7 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                     shape = (shape[0], shape[1] + len(append_cols))
 
                 result_chunk = chunk_op.new_chunk(
-                    chunk_inputs,
-                    shape=shape,
-                    index=c.index,
+                    chunk_inputs, shape=shape, index=c.index,
                 )
                 result_chunk._set_tileable_meta(
                     tileable_key=out.key,

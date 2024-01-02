@@ -83,9 +83,7 @@ class ActorPoolConfig:
         )  # pragma: no cover
 
     def reset_pool_external_address(
-        self,
-        process_index: int,
-        external_address: Union[str, List[str]],
+        self, process_index: int, external_address: Union[str, List[str]],
     ):
         if not isinstance(external_address, list):
             external_address = [external_address]

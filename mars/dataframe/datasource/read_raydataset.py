@@ -155,8 +155,7 @@ def read_ray_dataset(ds, columns=None, incremental_index=False, **kwargs):
 @functools.wraps(read_ray_dataset)
 def read_raydataset(*args, **kwargs):
     warnings.warn(
-        "read_raydataset has been renamed to read_ray_dataset",
-        DeprecationWarning,
+        "read_raydataset has been renamed to read_ray_dataset", DeprecationWarning,
     )
     return read_ray_dataset(*args, **kwargs)
 

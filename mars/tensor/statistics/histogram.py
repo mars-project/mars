@@ -119,7 +119,7 @@ class HistBinScottSelector(HistBinSelector):
     """
 
     def __call__(self):
-        return (24.0 * np.pi**0.5 / self._x.size) ** (1.0 / 3.0) * mt.std(self._x)
+        return (24.0 * np.pi ** 0.5 / self._x.size) ** (1.0 / 3.0) * mt.std(self._x)
 
 
 class HistBinStoneSelector(HistBinSelector):
@@ -417,12 +417,7 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
     _uniform_bins = TupleField("uniform_bins")
 
     def __init__(
-        self,
-        input=None,
-        bins=None,
-        range=None,
-        weights=None,
-        **kw,
+        self, input=None, bins=None, range=None, weights=None, **kw,
     ):
         super().__init__(_input=input, _bins=bins, _range=range, _weights=weights, **kw)
 

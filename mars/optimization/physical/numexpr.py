@@ -114,10 +114,7 @@ def _can_fuse(node: ChunkType):
 
 
 def _collect_fuse(
-    graph: ChunkGraph,
-    node: ChunkType,
-    graph_results: Set[ChunkType],
-    cached_can_fuse,
+    graph: ChunkGraph, node: ChunkType, graph_results: Set[ChunkType], cached_can_fuse,
 ):
     fuse_graph = ChunkGraph()
     fuse_graph.add_node(node)
@@ -227,10 +224,7 @@ class NumexprRuntimeOptimizer(RuntimeOptimizer):
                 dtype=tail_chunk.dtype,
             )
             fused_chunk = fuse_op.new_chunk(
-                inputs,
-                kws=[tail_chunk.params],
-                _key=tail_chunk.key,
-                _chunk=tail_chunk,
+                inputs, kws=[tail_chunk.params], _key=tail_chunk.key, _chunk=tail_chunk,
             ).data
 
             graph.add_node(fused_chunk)

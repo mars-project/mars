@@ -110,10 +110,7 @@ class PairwiseDistances(TensorOperand, TensorOperandMixin):
             chunk_inputs = [x.cix[xi, 0], y.cix[yi, 0]]
             out_chunk = chunk_op.new_chunk(
                 chunk_inputs,
-                shape=(
-                    chunk_inputs[0].shape[0],
-                    chunk_inputs[1].shape[0],
-                ),
+                shape=(chunk_inputs[0].shape[0], chunk_inputs[1].shape[0],),
                 order=out.order,
                 index=idx,
             )

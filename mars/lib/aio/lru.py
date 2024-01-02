@@ -125,12 +125,7 @@ def _close_waited(wrapped, _):
 
 
 def _cache_info(wrapped, maxsize):
-    return _CacheInfo(
-        wrapped.hits,
-        wrapped.misses,
-        maxsize,
-        len(wrapped._cache),
-    )
+    return _CacheInfo(wrapped.hits, wrapped.misses, maxsize, len(wrapped._cache),)
 
 
 def __cache_touch(wrapped, key):
@@ -151,11 +146,7 @@ def _cache_miss(wrapped, key):
 
 
 def alru_cache(
-    fn=None,
-    maxsize=128,
-    typed=False,
-    *,
-    cache_exceptions=True,
+    fn=None, maxsize=128, typed=False, *, cache_exceptions=True,
 ):
     def wrapper(fn):
         _origin = unpartial(fn)

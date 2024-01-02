@@ -40,10 +40,10 @@ except ImportError:  # pragma: no cover
 @pytest.fixture
 async def create_cluster(request):
     client = await new_cluster(
-        supervisor_mem=256 * 1024**2,
+        supervisor_mem=256 * 1024 ** 2,
         worker_num=2,
         worker_cpu=1,
-        worker_mem=256 * 1024**2,
+        worker_mem=256 * 1024 ** 2,
         backend=MARS_CI_BACKEND,
     )
     async with client:
@@ -96,10 +96,7 @@ async def test_mars_with_xgboost(ray_start_regular_shared, create_cluster):
         train_set = RayDMatrix(ds, "target")
         evals_result = {}
         bst = train(
-            {
-                "objective": "binary:logistic",
-                "eval_metric": ["logloss", "error"],
-            },
+            {"objective": "binary:logistic", "eval_metric": ["logloss", "error"],},
             train_set,
             evals_result=evals_result,
             evals=[(train_set, "train")],

@@ -125,10 +125,7 @@ def gather_node_env():
         mars_resource.cuda_card_stats()
     ):  # pragma: no cover
         bands[f"gpu-{idx}"] = {
-            "resources": {
-                "gpu": 1,
-                "memory": gpu_card_stat.fb_mem_info.total,
-            }
+            "resources": {"gpu": 1, "memory": gpu_card_stat.fb_mem_info.total,}
         }
     return node_info
 

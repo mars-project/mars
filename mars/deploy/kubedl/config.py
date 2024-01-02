@@ -116,9 +116,7 @@ class ReplicaSpecConfig:
             "replicas": int(self._replicas),
             "restartPolicy": "Never",
             "template": {
-                "metadata": {
-                    "labels": {"mars/service-type": self._name},
-                },
+                "metadata": {"labels": {"mars/service-type": self._name},},
                 "spec": self.build_template_spec(),
             },
         }

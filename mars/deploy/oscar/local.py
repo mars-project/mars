@@ -303,11 +303,7 @@ class LocalClient:
         self.session = session
 
     @classmethod
-    async def create(
-        cls,
-        cluster: LocalCluster,
-        timeout: float = None,
-    ) -> ClientType:
+    async def create(cls, cluster: LocalCluster, timeout: float = None,) -> ClientType:
         session = await _new_session(
             cluster.external_address,
             backend=cluster.backend,

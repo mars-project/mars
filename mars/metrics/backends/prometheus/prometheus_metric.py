@@ -34,10 +34,7 @@ class PrometheusMetricMixin(AbstractMetric):
         # Prometheus metric name must match the regex `[a-zA-Z_:][a-zA-Z0-9_:]*`
         # `.` is a common character in metrics, so here replace it with `:`
         self._name = self._name.replace(".", ":")
-        self._tag_keys = self._tag_keys + (
-            "host",
-            "pid",
-        )
+        self._tag_keys = self._tag_keys + ("host", "pid",)
         self._tags = {"host": socket.gethostname(), "pid": os.getpid()}
         try:
             self._metric = (

@@ -197,8 +197,5 @@ def rechunk(a: TileableType, chunk_size: chunk_size_type, reassign_worker=False)
             if chunk_size == a.nsplits:
                 return a
 
-    op = DataFrameRechunk(
-        chunk_size=chunk_size,
-        reassign_worker=reassign_worker,
-    )
+    op = DataFrameRechunk(chunk_size=chunk_size, reassign_worker=reassign_worker,)
     return op(a)

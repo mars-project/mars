@@ -64,10 +64,7 @@ class StatsModelsPredict(LearnOperand, LearnOperandMixin):
             )
         else:
             self._output_types = [OutputType.tensor]
-            kwargs = dict(
-                shape=exog.shape[:1],
-                dtype=np.dtype("float"),
-            )
+            kwargs = dict(shape=exog.shape[:1], dtype=np.dtype("float"),)
         return self.new_tileable([exog], **kwargs)
 
     @classmethod
@@ -89,9 +86,7 @@ class StatsModelsPredict(LearnOperand, LearnOperandMixin):
                 )
             else:
                 kwargs = dict(
-                    index=in_chunk.index[:1],
-                    shape=in_chunk.shape[:1],
-                    dtype=out.dtype,
+                    index=in_chunk.index[:1], shape=in_chunk.shape[:1], dtype=out.dtype,
                 )
 
             new_op = op.copy().reset_key()

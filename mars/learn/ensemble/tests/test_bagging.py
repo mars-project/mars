@@ -204,10 +204,7 @@ def test_bagging_sample_reindex(
 
 @pytest.mark.parametrize(
     "use_dataframe, max_samples, max_features, with_weights, base_estimator_cls",
-    [
-        (False, 10, 0.5, False, LogisticRegression),
-        (True, 10, 1.0, True, SVC),
-    ],
+    [(False, 10, 0.5, False, LogisticRegression), (True, 10, 1.0, True, SVC),],
 )
 def test_bagging_classifier(
     setup, use_dataframe, max_samples, max_features, with_weights, base_estimator_cls
@@ -281,10 +278,7 @@ def test_bagging_classifier(
 
 @pytest.mark.parametrize(
     "use_dataframe, max_samples, max_features, with_weights",
-    [
-        (False, 10, 0.5, False),
-        (True, 10, 1.0, True),
-    ],
+    [(False, 10, 0.5, False), (True, 10, 1.0, True),],
 )
 def test_bagging_regressor(
     setup, use_dataframe, max_samples, max_features, with_weights

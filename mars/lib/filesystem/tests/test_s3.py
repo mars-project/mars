@@ -32,6 +32,7 @@ if S3FileSystem is not None:
             super().__init__(**kwargs)
             raise KwArgsException(kwargs)
 
+
 else:
     TestS3FileSystem = None
 

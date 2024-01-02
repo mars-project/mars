@@ -67,8 +67,7 @@ async def actor_pool():
             address=pool.external_address,
         )
         queue_ref = await mo.create_actor(
-            MockSubtaskQueueingActor,
-            address=pool.external_address,
+            MockSubtaskQueueingActor, address=pool.external_address,
         )
         try:
             yield pool, cluster_api, session_id, slots_ref, queue_ref

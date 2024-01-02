@@ -57,8 +57,7 @@ class ExecutionConfig:
         assert isinstance(execution_config, ExecutionConfig)
         assert self.backend == execution_config.backend
         merge_dict(
-            self._config,
-            execution_config.get_config_dict(),
+            self._config, execution_config.get_config_dict(),
         )
         return self
 

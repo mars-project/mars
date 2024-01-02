@@ -55,10 +55,7 @@ async def test_send_when_close(fake_get_client):
 
     caller = ActorCaller()
 
-    router = Router(
-        external_addresses=["test1"],
-        local_address="test2",
-    )
+    router = Router(external_addresses=["test1"], local_address="test2",)
     futures = []
     for index in range(2):
         futures.append(

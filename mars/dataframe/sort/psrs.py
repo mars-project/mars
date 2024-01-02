@@ -183,9 +183,7 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
         )
         concat_pivot_index = out_idx[: op.axis] + (0,) + out_idx[op.axis :]
         concat_pivot_chunk = concat_pivot_op.new_chunk(
-            sampled_chunks,
-            shape=concat_pivot_shape,
-            index=concat_pivot_index,
+            sampled_chunks, shape=concat_pivot_shape, index=concat_pivot_index,
         )
         return concat_pivot_chunk
 

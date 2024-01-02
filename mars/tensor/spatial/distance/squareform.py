@@ -228,9 +228,7 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
         out_indices = list(itertools.product(*(range(len(cs)) for cs in chunk_size)))
         for out_idx, out_shape in zip(out_indices, out_shape_iter):
             reduce_chunk_op = TensorSquareform(
-                stage=OperandStage.reduce,
-                dtype=out.dtype,
-                n_reducers=len(out_indices),
+                stage=OperandStage.reduce, dtype=out.dtype, n_reducers=len(out_indices),
             )
             reduce_chunk = reduce_chunk_op.new_chunk(
                 [proxy_chunk], shape=out_shape, index=out_idx, order=out.order

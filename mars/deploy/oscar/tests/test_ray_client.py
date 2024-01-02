@@ -28,11 +28,7 @@ ray = lazy_import("ray")
 
 @require_ray
 @pytest.mark.parametrize(
-    "backend",
-    [
-        "mars",
-        "ray",
-    ],
+    "backend", ["mars", "ray",],
 )
 def test_ray_client(backend):
     server_code = """import time

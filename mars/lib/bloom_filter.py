@@ -55,7 +55,7 @@ class Mmap_backend(object):
     Please note that this has only been tested on Linux so far.
     """
 
-    effs = 2**8 - 1
+    effs = 2 ** 8 - 1
 
     def __init__(self, num_bits, filename):
         if not HAVE_MMAP:
@@ -119,7 +119,7 @@ class Mmap_backend(object):
 class File_seek_backend(object):
     """Backend storage for our "array of bits" using a file in which we seek"""
 
-    effs = 2**8 - 1
+    effs = 2 ** 8 - 1
 
     def __init__(self, num_bits, filename):
         self.num_bits = num_bits
@@ -201,7 +201,7 @@ class Array_then_file_seek_backend(object):
     RAM.  On close, we write from RAM to the file.
     """
 
-    effs = 2**8 - 1
+    effs = 2 ** 8 - 1
 
     def __init__(self, num_bits, filename, max_bytes_in_memory):
         self.num_bits = num_bits
@@ -223,7 +223,7 @@ class Array_then_file_seek_backend(object):
 
         os.lseek(self.file_, 0, os.SEEK_SET)
         offset = 0
-        intended_block_len = 2**17
+        intended_block_len = 2 ** 17
         while True:
             if offset + intended_block_len < self.bytes_in_memory:
                 block = os.read(self.file_, intended_block_len)
@@ -315,7 +315,7 @@ class Array_backend(object):
 
     # Note that this has now been split out into a bits_mod for the benefit of
     # other projects.
-    effs = 2**32 - 1
+    effs = 2 ** 32 - 1
 
     def __init__(self, num_bits):
         self.num_bits = num_bits
@@ -377,8 +377,8 @@ def get_bitno_seed_rnd(bloom_filter, key):
         yield bitno % bloom_filter.num_bits_m
 
 
-MERSENNES1 = [2**x - 1 for x in [17, 31, 127]]
-MERSENNES2 = [2**x - 1 for x in [19, 67, 257]]
+MERSENNES1 = [2 ** x - 1 for x in [17, 31, 127]]
+MERSENNES2 = [2 ** x - 1 for x in [19, 67, 257]]
 
 
 def simple_hash(int_list, prime1, prime2, prime3):
@@ -488,9 +488,7 @@ class BloomFilter(object):
                 self.backend = Mmap_backend(self.num_bits_m, filename[0])
             else:
                 self.backend = Array_then_file_seek_backend(
-                    self.num_bits_m,
-                    filename[0],
-                    filename[1],
+                    self.num_bits_m, filename[0], filename[1],
                 )
         else:
             if start_fresh:
@@ -507,11 +505,7 @@ class BloomFilter(object):
     def __repr__(self):
         return (
             "BloomFilter(ideal_num_elements_n=%d, error_rate_p=%f, " + "num_bits_m=%d)"
-        ) % (
-            self.ideal_num_elements_n,
-            self.error_rate_p,
-            self.num_bits_m,
-        )
+        ) % (self.ideal_num_elements_n, self.error_rate_p, self.num_bits_m,)
 
     def add(self, key):
         """Add an element to the filter"""

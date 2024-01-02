@@ -29,7 +29,9 @@ def return_error(func, exc_type=Exception):
     return return_exceptions_wrapper
 
 
-returns_error = return_errors = returns_errors = return_error  # cause I make too many typos
+returns_error = (
+    return_errors
+) = returns_errors = return_error  # cause I make too many typos
 
 
 @return_error

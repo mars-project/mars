@@ -513,14 +513,12 @@ def test_dataframe_groupby_agg_sort(setup):
                 continue
             r = mdf.groupby("c2").agg(agg_fun, method=method)
             pd.testing.assert_frame_equal(
-                r.execute().fetch(),
-                raw.groupby("c2").agg(agg_fun),
+                r.execute().fetch(), raw.groupby("c2").agg(agg_fun),
             )
 
         r = mdf.groupby("c2").agg(agg_funs, method=method)
         pd.testing.assert_frame_equal(
-            r.execute().fetch(),
-            raw.groupby("c2").agg(agg_funs),
+            r.execute().fetch(), raw.groupby("c2").agg(agg_funs),
         )
 
         agg = OrderedDict([("c1", ["min", "mean"]), ("c3", "std")])
@@ -533,14 +531,12 @@ def test_dataframe_groupby_agg_sort(setup):
 
         r = mdf.groupby("c2").agg({"c1": "min", "c3": "min"}, method=method)
         pd.testing.assert_frame_equal(
-            r.execute().fetch(),
-            raw.groupby("c2").agg({"c1": "min", "c3": "min"}),
+            r.execute().fetch(), raw.groupby("c2").agg({"c1": "min", "c3": "min"}),
         )
 
         r = mdf.groupby("c2").agg({"c1": "min"}, method=method)
         pd.testing.assert_frame_equal(
-            r.execute().fetch(),
-            raw.groupby("c2").agg({"c1": "min"}),
+            r.execute().fetch(), raw.groupby("c2").agg({"c1": "min"}),
         )
 
         # test groupby series
@@ -675,11 +671,7 @@ def test_groupby_agg_auto_method(setup):
 
     with option_context({"chunk_store_limit": 1}):
         raw2 = pd.DataFrame(
-            {
-                "c1": rs.randint(20, size=100),
-                "c2": rs.rand(100),
-                "c3": rs.rand(100),
-            }
+            {"c1": rs.randint(20, size=100), "c2": rs.rand(100), "c3": rs.rand(100),}
         )
         mdf = md.DataFrame(raw2, chunk_size=20)
         r = mdf.groupby("c3").agg("min")
@@ -714,7 +706,7 @@ def test_distributed_groupby_agg(setup_cluster):
     rs = np.random.RandomState(0)
     raw = pd.DataFrame(rs.rand(50000, 10))
     df = md.DataFrame(raw, chunk_size=raw.shape[0] // 2)
-    with option_context({"chunk_store_limit": 1024**2}):
+    with option_context({"chunk_store_limit": 1024 ** 2}):
         r = df.groupby(0).sum(combine_size=1)
     result = r.execute().fetch()
     pd.testing.assert_frame_equal(result, raw.groupby(0).sum())
@@ -1062,8 +1054,7 @@ def test_groupby_transform(setup):
 
     r = mdf2.groupby("c").transform(f, skip_infer=True)
     pd.testing.assert_frame_equal(
-        r.execute().fetch().sort_index(),
-        df2.groupby("c").transform(f).sort_index(),
+        r.execute().fetch().sort_index(), df2.groupby("c").transform(f).sort_index(),
     )
 
     if pd.__version__ != "1.1.0":

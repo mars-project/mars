@@ -140,10 +140,7 @@ del _patch_groupby_kurt
 
 
 def build_mock_agg_result(
-    groupby: GROUPBY_TYPE,
-    groupby_params: Dict,
-    raw_func: Callable,
-    **raw_func_kw,
+    groupby: GROUPBY_TYPE, groupby_params: Dict, raw_func: Callable, **raw_func_kw,
 ):
     try:
         agg_result = groupby.op.build_mock_groupby().aggregate(raw_func, **raw_func_kw)
@@ -490,7 +487,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 by = []
                 for v in map_op.groupby_params["by"]:
                     if isinstance(v, ENTITY_TYPE):
-                        by_chunk = v.cix[chunk.index[0],]
+                        by_chunk = v.cix[
+                            chunk.index[0],
+                        ]
                         chunk_inputs.append(by_chunk)
                         by.append(by_chunk)
                     else:
@@ -567,10 +566,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         sample_chunks: List[ChunkType],
         agg_chunk_len: int,
     ):
-        properties = dict(
-            by=op.groupby_params["by"],
-            gpu=op.is_gpu(),
-        )
+        properties = dict(by=op.groupby_params["by"], gpu=op.is_gpu(),)
 
         # stage 2: gather and merge samples, choose and broadcast p-1 pivots
         kind = "quicksort"
@@ -584,25 +580,18 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         )
 
         concat_pivot_chunk = concat_pivot_op.new_chunk(
-            sample_chunks,
-            shape=(agg_chunk_len,),
-            dtype=np.dtype(object),
+            sample_chunks, shape=(agg_chunk_len,), dtype=np.dtype(object),
         )
         return concat_pivot_chunk
 
     @classmethod
     def _sample_chunks(
-        cls,
-        op: "DataFrameGroupByAgg",
-        agg_chunks: List[ChunkType],
+        cls, op: "DataFrameGroupByAgg", agg_chunks: List[ChunkType],
     ):
         chunk_shape = len(agg_chunks)
         sampled_chunks = []
 
-        properties = dict(
-            by=op.groupby_params["by"],
-            gpu=op.is_gpu(),
-        )
+        properties = dict(by=op.groupby_params["by"], gpu=op.is_gpu(),)
 
         for i, chunk in enumerate(agg_chunks):
             kws = []
@@ -875,13 +864,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 op,
                 len(combined_chunks),
             )
-            return cls._perform_shuffle(
-                op,
-                combined_chunks,
-                in_df,
-                out_df,
-                func_infos,
-            )
+            return cls._perform_shuffle(op, combined_chunks, in_df, out_df, func_infos,)
 
     @classmethod
     def _tile_auto(
@@ -1144,15 +1127,18 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         in_data_dict = cls._pack_inputs(op.agg_funcs, in_data_tuple)
 
         combines = []
-        for raw_input, (
-            _input_key,
-            raw_func_name,
-            _map_func_name,
-            agg_func_name,
-            custom_reduction,
-            output_key,
-            _output_limit,
-            kwds,
+        for (
+            raw_input,
+            (
+                _input_key,
+                raw_func_name,
+                _map_func_name,
+                agg_func_name,
+                custom_reduction,
+                output_key,
+                _output_limit,
+                kwds,
+            ),
         ) in zip(ctx[op.inputs[0].key], op.agg_funcs):
             input_obj = in_data_dict[output_key]
             if agg_func_name == "custom_reduction":

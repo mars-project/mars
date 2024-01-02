@@ -131,9 +131,7 @@ class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
     inclusive = StringField("inclusive")
 
     def __init__(
-        self,
-        output_types=None,
-        **kw,
+        self, output_types=None, **kw,
     ):
         super().__init__(_output_types=output_types, **kw)
         if self.output_types is None:

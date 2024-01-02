@@ -98,8 +98,7 @@ def gen_rechunk_infos(
             input_chunk_shape=list(len(s) for s in inp_chunk_indexes),
         )
         for inp_chunk_index, inp_chunk_slice in zip(
-            itertools.product(*inp_chunk_indexes),
-            itertools.product(*inp_chunk_slices),
+            itertools.product(*inp_chunk_indexes), itertools.product(*inp_chunk_slices),
         ):
             inp_chunk = inp.cix[tuple(inp_chunk_index)]
             inp_chunks.append(inp_chunk)

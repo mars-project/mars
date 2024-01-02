@@ -310,7 +310,9 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 index_value = parse_index(pd_index, store_data=True)
             else:
                 assert op.index is not None
-                index_chunk = in_tensors[-1].cix[i,]
+                index_chunk = in_tensors[-1].cix[
+                    i,
+                ]
                 index_value = parse_index(
                     pd.Index([], dtype=index_chunk.dtype),
                     index_chunk,
@@ -469,9 +471,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                     if isinstance(index_data, pd.RangeIndex) and len(index_data) == 0:
                         index_data = None
                 ctx[chunk.key] = pd.DataFrame(
-                    tensor_data,
-                    index=index_data,
-                    columns=op.columns,
+                    tensor_data, index=index_data, columns=op.columns,
                 )
         else:
             index_data = ctx[op.index.key]

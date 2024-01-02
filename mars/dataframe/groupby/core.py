@@ -277,7 +277,9 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
                 chunk_by = []
                 for k in by:
                     if isinstance(k, SERIES_TYPE):
-                        by_chunk = k.cix[chunk.index[0],]
+                        by_chunk = k.cix[
+                            chunk.index[0],
+                        ]
                         chunk_by.append(by_chunk)
                         chunk_inputs.append(by_chunk)
                     else:
@@ -285,9 +287,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
                 map_op._by = chunk_by
             map_chunks.append(
                 map_op.new_chunk(
-                    chunk_inputs,
-                    shape=(np.nan, np.nan),
-                    index=chunk.index,
+                    chunk_inputs, shape=(np.nan, np.nan), index=chunk.index,
                 )
             )
 
@@ -417,10 +417,9 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
                             filtered_by.append(v)
                 filtered.append(_take_index(d, index_filter))
             if deliver_by:
-                ctx[chunk.key, reducer_index] = ctx.get_current_chunk().index, (
-                    *filtered,
-                    filtered_by,
-                    deliver_by,
+                ctx[chunk.key, reducer_index] = (
+                    ctx.get_current_chunk().index,
+                    (*filtered, filtered_by, deliver_by,),
                 )
             else:
                 if isinstance(df, tuple):

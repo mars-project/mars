@@ -24,7 +24,7 @@ from ...utils import dataslots
 from .core import DataManagerActor, WrappedStorageFileObject
 from .handler import StorageHandlerActor
 
-DEFAULT_TRANSFER_BLOCK_SIZE = 4 * 1024**2
+DEFAULT_TRANSFER_BLOCK_SIZE = 4 * 1024 ** 2
 
 
 logger = logging.getLogger(__name__)

@@ -432,9 +432,7 @@ def test_iloc_setitem():
     assert series.chunks[1].op.value == 2
 
     raw = pd.DataFrame(
-        np.random.rand(9, 2),
-        index=["a1", "a2", "a3"] * 3,
-        columns=["x", "y"],
+        np.random.rand(9, 2), index=["a1", "a2", "a3"] * 3, columns=["x", "y"],
     )
     df = md.DataFrame(raw, chunk_size=4)
     iloc_df = df.iloc[:, 1:]
@@ -635,9 +633,7 @@ def test_dataframe_loc():
 
     # test loc chunk's index_value
     raw = pd.DataFrame(
-        np.random.rand(9, 2),
-        index=["a1", "a2", "a3"] * 3,
-        columns=["x", "y"],
+        np.random.rand(9, 2), index=["a1", "a2", "a3"] * 3, columns=["x", "y"],
     )
     df = md.DataFrame(raw, chunk_size=4)
     loc_df = df.loc[:, ["x"]]

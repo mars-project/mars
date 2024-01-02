@@ -79,10 +79,7 @@ async def actor_pool():
 
         # create configuration
         config = ExecutionConfig.from_params(
-            backend=backend,
-            n_worker=1,
-            n_cpu=2,
-            subtask_max_retries=3,
+            backend=backend, n_worker=1, n_cpu=2, subtask_max_retries=3,
         )
         await mo.create_actor(
             TaskConfigurationActor,
@@ -677,9 +674,7 @@ async def test_dump_subtask_graph(actor_pool):
     next(TileableGraphBuilder(graph).build())
 
     task_id = await manager.submit_tileable_graph(
-        graph,
-        fuse_enabled=True,
-        extra_config={"dump_subtask_graph": True},
+        graph, fuse_enabled=True, extra_config={"dump_subtask_graph": True},
     )
     assert isinstance(task_id, str)
 

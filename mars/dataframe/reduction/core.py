@@ -215,12 +215,7 @@ def _default_agg_fun(value, func_name=None, **kw):
 
 @functools.lru_cache(100)
 def _get_series_reduction_dtype(
-    dtype,
-    func_name,
-    axis=None,
-    bool_only=False,
-    skipna=True,
-    numeric_only=False,
+    dtype, func_name, axis=None, bool_only=False, skipna=True, numeric_only=False,
 ):
     test_series = build_series(dtype=dtype, ensure_string=True)
     if func_name == "count":
@@ -1239,11 +1234,7 @@ class ReductionCompiler:
 
             post_funcs.append(
                 ReductionPostStep(
-                    step.input_keys,
-                    step.output_key,
-                    func_name,
-                    post_cols,
-                    step.func,
+                    step.input_keys, step.output_key, func_name, post_cols, step.func,
                 )
             )
 

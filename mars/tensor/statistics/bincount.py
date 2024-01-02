@@ -154,10 +154,7 @@ class TensorBinCount(TensorMapReduceOperand, TensorOperandMixin):
         params = out.params.copy()
         params["shape"] = (tileable_right_bound,)
         return new_op.new_tileables(
-            op.inputs,
-            chunks=reduce_chunks,
-            nsplits=(tuple(reduce_nsplits),),
-            **params,
+            op.inputs, chunks=reduce_chunks, nsplits=(tuple(reduce_nsplits),), **params,
         )
 
     @classmethod

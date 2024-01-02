@@ -695,8 +695,7 @@ def test_setitem(setup):
     result = df.execute().fetch()
     if not _allow_set_missing_list:
         expected = data.copy().reindex(
-            ["c" + str(i) for i in range(5)] + ["c10", "c11", "c12"],
-            axis=1,
+            ["c" + str(i) for i in range(5)] + ["c10", "c11", "c12"], axis=1,
         )
     else:
         expected = data.copy()
@@ -845,15 +844,9 @@ def test_reset_index_execution(setup):
     expected = (data1 + data2).reset_index()
     np.testing.assert_array_equal(result.to_numpy(), expected.to_numpy())
 
-    data1 = pd.Series(
-        np.random.rand(10),
-        index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
-    )
+    data1 = pd.Series(np.random.rand(10), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],)
     series1 = md.Series(data1, chunk_size=3)
-    data2 = pd.Series(
-        np.random.rand(10),
-        index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3],
-    )
+    data2 = pd.Series(np.random.rand(10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3],)
     series2 = md.Series(data2, chunk_size=3)
     df = (series1 + series2).reset_index(incremental_index=True)
     result = df.execute().fetch()
@@ -921,8 +914,8 @@ def test_rename(setup):
     r = series.rename("new_series")
     pd.testing.assert_series_equal(r.execute().fetch(), raw.rename("new_series"))
 
-    r = series.rename(lambda x: 2**x)
-    pd.testing.assert_series_equal(r.execute().fetch(), raw.rename(lambda x: 2**x))
+    r = series.rename(lambda x: 2 ** x)
+    pd.testing.assert_series_equal(r.execute().fetch(), raw.rename(lambda x: 2 ** x))
 
     with pytest.raises(TypeError):
         series.name = {1: 10, 2: 20}

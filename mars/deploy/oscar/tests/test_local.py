@@ -371,11 +371,11 @@ async def test_execute_describe(create_cluster):
 async def test_execute_apply_closure(create_cluster):
     # DataFrame
     cols = [chr(ord("A") + i) for i in range(10)]
-    raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
     df = md.DataFrame(raw, chunk_size=5)
 
-    x1 = pd.Series([i for i in range(10**4)])
-    y1 = pd.Series([i for i in range(10**4)])
+    x1 = pd.Series([i for i in range(10 ** 4)])
+    y1 = pd.Series([i for i in range(10 ** 4)])
 
     def dataframe_closure(z1):
         return pd.concat([x1, y1], ignore_index=True)
@@ -394,7 +394,7 @@ async def test_execute_apply_closure(create_cluster):
 
     # Series
     idxes = [chr(ord("A") + i) for i in range(20)]
-    s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
+    s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
 
     series = md.Series(s_raw, chunk_size=5)
 
@@ -434,15 +434,15 @@ async def test_execute_apply_closure(create_cluster):
 async def test_execute_callable_closure(create_cluster, multiplier):
     # DataFrame
     cols = [chr(ord("A") + i) for i in range(10)]
-    raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
     df = md.DataFrame(raw, chunk_size=5)
 
     class callable_df:
         __slots__ = "x", "__dict__"
 
         def __init__(self, multiplier: int = 1):
-            self.x = pd.Series([i for i in range(10**multiplier)])
-            self.y = pd.Series([i for i in range(10**multiplier)])
+            self.x = pd.Series([i for i in range(10 ** multiplier)])
+            self.y = pd.Series([i for i in range(10 ** multiplier)])
 
         def __call__(self, pdf):
             return pd.concat([self.x, self.y], ignore_index=True)
@@ -1059,12 +1059,7 @@ async def speculative_cluster():
     config["scheduling"]["speculation"]["max_concurrent_run"] = 10
     config["scheduling"]["subtask_cancel_timeout"] = 0.1
     config["scheduling"]["enable_kill_slot"] = True
-    client = await new_cluster(
-        config=config,
-        n_worker=5,
-        n_cpu=10,
-        use_uvloop=False,
-    )
+    client = await new_cluster(config=config, n_worker=5, n_cpu=10, use_uvloop=False,)
     async with client:
         yield client
 

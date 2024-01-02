@@ -89,9 +89,7 @@ async def debug_logger():
     try:
         mo.set_debug_options(
             mo.DebugOptions(
-                actor_call_timeout=1,
-                log_unhandled_errors=True,
-                log_cycle_send=True,
+                actor_call_timeout=1, log_unhandled_errors=True, log_cycle_send=True,
             )
         )
         yield log_file

@@ -307,8 +307,8 @@ class WorkerMetaAPI(BaseMetaAPI):
         worker_meta_store_manager_ref = await mo.actor_ref(
             uid=WorkerMetaStoreManagerActor.default_uid(), address=address
         )
-        worker_meta_store_ref = (
-            await worker_meta_store_manager_ref.new_session_meta_store(session_id)
+        worker_meta_store_ref = await worker_meta_store_manager_ref.new_session_meta_store(
+            session_id
         )
         return WorkerMetaAPI(session_id, worker_meta_store_ref)
 

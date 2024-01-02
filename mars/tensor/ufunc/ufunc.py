@@ -67,15 +67,11 @@ class TensorUfuncDef:
 
 UFUNC_TO_TENSOR_FUNCS = {
     np.add: TensorUfuncDef(
-        arith.add,
-        accumulator=reduction.cumsum,
-        aggregator=reduction.sum,
+        arith.add, accumulator=reduction.cumsum, aggregator=reduction.sum,
     ),
     np.subtract: TensorUfuncDef(arith.subtract),
     np.multiply: TensorUfuncDef(
-        arith.multiply,
-        accumulator=reduction.cumprod,
-        aggregator=reduction.prod,
+        arith.multiply, accumulator=reduction.cumprod, aggregator=reduction.prod,
     ),
     np.divide: TensorUfuncDef(arith.divide),
     np.logaddexp: TensorUfuncDef(
