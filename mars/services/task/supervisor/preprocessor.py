@@ -60,9 +60,7 @@ class CancellableTiler(Tiler):
                 break
 
     def _gen_result_chunks(
-        self,
-        chunk_graph: ChunkGraph,
-        next_tileable_handlers: List[_TileableHandler],
+        self, chunk_graph: ChunkGraph, next_tileable_handlers: List[_TileableHandler],
     ):
         if not self.cancelled:
             return super()._gen_result_chunks(chunk_graph, next_tileable_handlers)
@@ -119,10 +117,7 @@ class TaskPreprocessor:
     map_reduce_id_to_infos: Dict[int, MapReduceInfo]
 
     def __init__(
-        self,
-        task: Task,
-        tiled_context: TileContext = None,
-        config: Config = None,
+        self, task: Task, tiled_context: TileContext = None, config: Config = None,
     ):
         self._task = task
         self.tileable_graph = task.tileable_graph

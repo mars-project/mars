@@ -246,7 +246,7 @@ def test_rechunk():
 
 def test_dataframe_apply():
     cols = [chr(ord("A") + i) for i in range(10)]
-    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
 
     old_chunk_store_limit = options.chunk_store_limit
     try:
@@ -368,7 +368,7 @@ def test_dataframe_apply():
 
 def test_series_apply():
     idxes = [chr(ord("A") + i) for i in range(20)]
-    s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
+    s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
 
     series = from_pandas_series(s_raw, chunk_size=5)
 
@@ -439,11 +439,11 @@ def test_series_apply():
 
 def test_transform():
     cols = [chr(ord("A") + i) for i in range(10)]
-    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
     df = from_pandas_df(df_raw, chunk_size=5)
 
     idxes = [chr(ord("A") + i) for i in range(20)]
-    s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
+    s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
     series = from_pandas_series(s_raw, chunk_size=5)
 
     def rename_fn(f, new_name):

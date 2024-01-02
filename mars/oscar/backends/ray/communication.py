@@ -94,8 +94,9 @@ class _ArgWrapper:
         self.message = message
 
     def __reduce__(self):
-        return _argwrapper_unpickler, (
-            serialize(self.message, context={"serializer": "ray"}),
+        return (
+            _argwrapper_unpickler,
+            (serialize(self.message, context={"serializer": "ray"}),),
         )
 
 
@@ -104,8 +105,7 @@ def _init_ray_serialization_deserialization():
     _ray_serialize = ray.serialization.SerializationContext.serialize
     _ray_deserialize_object = ray.serialization.SerializationContext._deserialize_object
     serialized_bytes_counter = Metrics.counter(
-        "mars.channel_serialized_bytes",
-        "The bytes serialized by mars ray channel.",
+        "mars.channel_serialized_bytes", "The bytes serialized by mars ray channel.",
     )
     deserialized_bytes_counter = Metrics.counter(
         "mars.channel_deserialized_bytes",

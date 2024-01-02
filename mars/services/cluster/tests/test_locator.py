@@ -116,8 +116,7 @@ async def test_supervisor_peer_locator(actor_pool, temp_address_file):
 
     # test watch nodes changes
     version, result = await asyncio.wait_for(
-        locator_ref.watch_supervisors_by_keys(["mock_name"]),
-        timeout=30,
+        locator_ref.watch_supervisors_by_keys(["mock_name"]), timeout=30,
     )
     assert result[0] in addresses
 
@@ -177,8 +176,7 @@ async def test_worker_supervisor_locator(actor_pool, temp_address_file):
     supervisors = await locator_ref.get_supervisors(filter_ready=False)
     assert supervisors == addresses
     version, result = await asyncio.wait_for(
-        locator_ref.watch_supervisors_by_keys(["mock_name"]),
-        timeout=30,
+        locator_ref.watch_supervisors_by_keys(["mock_name"]), timeout=30,
     )
     assert result[0] in addresses
 

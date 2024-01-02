@@ -390,18 +390,12 @@ def test_broadcast_merge(setup):
     ns = np.random.RandomState(0)
     # small dataframe
     raw1 = pd.DataFrame(
-        {
-            "key": ns.randint(0, 10, size=10),
-            "value": np.arange(10),
-        },
+        {"key": ns.randint(0, 10, size=10), "value": np.arange(10),},
         index=[f"a{i}" for i in range(10)],
     )
     # big dataframe
     raw2 = pd.DataFrame(
-        {
-            "key": ns.randint(0, 100, size=100),
-            "value": np.arange(100, 200),
-        },
+        {"key": ns.randint(0, 100, size=100), "value": np.arange(100, 200),},
         index=[f"a{i}" for i in range(100)],
     )
 

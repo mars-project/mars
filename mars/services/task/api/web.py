@@ -83,9 +83,7 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
 
         oscar_api = await self._get_oscar_task_api(session_id)
         task_id = await oscar_api.submit_tileable_graph(
-            graph,
-            fuse_enabled=fuse_enabled,
-            extra_config=extra_config,
+            graph, fuse_enabled=fuse_enabled, extra_config=extra_config,
         )
         self.write(task_id)
 
@@ -218,11 +216,7 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
             serialize_serializable(extra_config) if extra_config else None
         )
         body = serialize_serializable(
-            {
-                "fuse": fuse_enabled,
-                "graph": graph,
-                "extra_config": extra_config_ser,
-            }
+            {"fuse": fuse_enabled, "graph": graph, "extra_config": extra_config_ser,}
         )
         res = await self._request_url(
             path=path,

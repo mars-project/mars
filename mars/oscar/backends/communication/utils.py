@@ -24,7 +24,7 @@ cupy = lazy_import("cupy")
 cudf = lazy_import("cudf")
 rmm = lazy_import("rmm")
 
-CUDA_CHUNK_SIZE = 16 * 1024**2
+CUDA_CHUNK_SIZE = 16 * 1024 ** 2
 
 
 def _convert_to_cupy_ndarray(

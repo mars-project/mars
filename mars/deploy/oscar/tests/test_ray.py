@@ -78,10 +78,10 @@ async def create_cluster(request):
     ray_config = _load_config(CONFIG_FILE)
     ray_config.update(param.get("config", {}))
     client = await new_cluster(
-        supervisor_mem=1 * 1024**3,
+        supervisor_mem=1 * 1024 ** 3,
         worker_num=2,
         worker_cpu=2,
-        worker_mem=1 * 1024**3,
+        worker_mem=1 * 1024 ** 3,
         config=ray_config,
     )
     async with client:

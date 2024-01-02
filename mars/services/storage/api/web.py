@@ -136,9 +136,7 @@ class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
 
         path = f"{self._address}/api/session/{self._session_id}/storage/batch/get"
         res = await self._request_url(
-            path=path,
-            method="POST",
-            data=serialize_serializable(get_chunks),
+            path=path, method="POST", data=serialize_serializable(get_chunks),
         )
         return deserialize_serializable(res.body)
 

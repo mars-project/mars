@@ -46,8 +46,8 @@ async def speculative_cluster():
         "test_cluster",
         worker_num=5,
         worker_cpu=2,
-        worker_mem=512 * 1024**2,
-        supervisor_mem=100 * 1024**2,
+        worker_mem=512 * 1024 ** 2,
+        supervisor_mem=100 * 1024 ** 2,
         config={
             "scheduling": {
                 "speculation": {
@@ -81,7 +81,7 @@ async def test_task_speculation_execution(ray_large_cluster, speculative_cluster
 @require_ray
 @pytest.mark.asyncio
 async def test_request_worker(ray_large_cluster):
-    worker_cpu, worker_mem = 1, 100 * 1024**2
+    worker_cpu, worker_mem = 1, 100 * 1024 ** 2
     client = await new_cluster(
         worker_num=0, worker_cpu=worker_cpu, worker_mem=worker_mem
     )
@@ -111,7 +111,7 @@ async def test_request_worker(ray_large_cluster):
 @require_ray
 @pytest.mark.asyncio
 async def test_reconstruct_worker(ray_large_cluster):
-    worker_cpu, worker_mem = 1, 100 * 1024**2
+    worker_cpu, worker_mem = 1, 100 * 1024 ** 2
     client = await new_cluster(
         worker_num=0, worker_cpu=worker_cpu, worker_mem=worker_mem
     )
@@ -163,8 +163,8 @@ async def test_auto_scale_out(ray_large_cluster, init_workers: int):
     client = await new_cluster(
         worker_num=init_workers,
         worker_cpu=2,
-        worker_mem=200 * 1024**2,
-        supervisor_mem=1 * 1024**3,
+        worker_mem=200 * 1024 ** 2,
+        supervisor_mem=1 * 1024 ** 3,
         config={
             "scheduling.autoscale.enabled": True,
             "scheduling.autoscale.scheduler_backlog_timeout": 1,
@@ -209,8 +209,8 @@ async def test_auto_scale_in(ray_large_cluster):
     client = await new_cluster(
         worker_num=0,
         worker_cpu=2,
-        worker_mem=200 * 1024**2,
-        supervisor_mem=1 * 1024**3,
+        worker_mem=200 * 1024 ** 2,
+        supervisor_mem=1 * 1024 ** 3,
         config=config,
     )
     async with client:
@@ -243,8 +243,8 @@ async def test_ownership_when_scale_in(ray_large_cluster):
     client = await new_cluster(
         worker_num=0,
         worker_cpu=2,
-        worker_mem=1 * 1024**3,
-        supervisor_mem=200 * 1024**2,
+        worker_mem=1 * 1024 ** 3,
+        supervisor_mem=200 * 1024 ** 2,
         config={
             "scheduling.autoscale.enabled": True,
             "scheduling.autoscale.scheduler_check_interval": 0.1,
@@ -273,10 +273,7 @@ async def test_ownership_when_scale_in(ray_large_cluster):
                 ray.get(latch.wait.remote())
             return pdf
 
-        df = df.map_chunk(
-            f,
-            args=(latch_actor,),
-        )
+        df = df.map_chunk(f, args=(latch_actor,),)
         info = df.execute(wait=False)
         while await autoscaler_ref.get_dynamic_worker_nums() <= 1:
             logger.info("Waiting workers to be created.")

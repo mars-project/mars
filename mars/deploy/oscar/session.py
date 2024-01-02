@@ -287,11 +287,7 @@ class _IsolatedSession(IsolatedAsyncSession):
                 break
 
     async def _run_in_background(
-        self,
-        tileables: list,
-        task_id: str,
-        progress: Progress,
-        profiling: Profiling,
+        self, tileables: list, task_id: str, progress: Progress, profiling: Profiling,
     ):
         with enter_mode(build=True, kernel=True):
             # wait for task to finish
@@ -384,9 +380,7 @@ class _IsolatedSession(IsolatedAsyncSession):
 
         # submit task
         task_id = await self._task_api.submit_tileable_graph(
-            tileable_graph,
-            fuse_enabled=fuse_enabled,
-            extra_config=extra_config,
+            tileable_graph, fuse_enabled=fuse_enabled, extra_config=extra_config,
         )
 
         progress = Progress()
@@ -497,8 +491,7 @@ class _IsolatedSession(IsolatedAsyncSession):
                     chunks.append(chunk)
                     get_chunk_metas.append(
                         self._meta_api.get_chunk_meta.delay(
-                            chunk.key,
-                            fields=fetcher.required_meta_keys,
+                            chunk.key, fields=fetcher.required_meta_keys,
                         )
                     )
                     indexes = (

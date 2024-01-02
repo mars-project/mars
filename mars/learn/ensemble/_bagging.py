@@ -529,12 +529,7 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
 
         for (
             reducer_id,
-            (
-                samples,
-                labels,
-                weights,
-                feature_idx_array,
-            ),
+            (samples, labels, weights, feature_idx_array,),
         ) in result_store.items():
             ctx[out_samples.key, (reducer_id, 0)] = (
                 ctx.get_current_chunk().index,
@@ -1463,8 +1458,7 @@ class BaggingClassifier(ClassifierMixin, BaseBagging):
         check_is_fitted(self)
         X = convert_to_tensor_or_dataframe(X)
         predict_op = BaggingPredictionOperand(
-            n_classes=self.n_classes_,
-            prediction_type=PredictionType.PROBABILITY,
+            n_classes=self.n_classes_, prediction_type=PredictionType.PROBABILITY,
         )
         return predict_op(X, self.estimators_, self.estimator_features_)
 
@@ -1540,8 +1534,7 @@ class BaggingClassifier(ClassifierMixin, BaseBagging):
         check_is_fitted(self)
         X = convert_to_tensor_or_dataframe(X)
         predict_op = BaggingPredictionOperand(
-            n_classes=self.n_classes_,
-            prediction_type=PredictionType.LOG_PROBABILITY,
+            n_classes=self.n_classes_, prediction_type=PredictionType.LOG_PROBABILITY,
         )
         probas = predict_op(X, self.estimators_, self.estimator_features_)
         return execute(probas, session=session, **(run_kwargs or dict()))
@@ -1567,8 +1560,7 @@ class BaggingClassifier(ClassifierMixin, BaseBagging):
         check_is_fitted(self)
         X = convert_to_tensor_or_dataframe(X)
         predict_op = BaggingPredictionOperand(
-            n_classes=self.n_classes_,
-            prediction_type=PredictionType.DECISION_FUNCTION,
+            n_classes=self.n_classes_, prediction_type=PredictionType.DECISION_FUNCTION,
         )
         result = predict_op(X, self.estimators_, self.estimator_features_)
         return execute(result, session=session, **(run_kwargs or dict()))

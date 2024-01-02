@@ -207,10 +207,7 @@ def test_ray_execute_subtask_basic(_):
 @pytest.mark.asyncio
 async def test_ray_fetcher(ray_start_regular_shared2):
     pd_value = pd.DataFrame(
-        {
-            "col1": [str(i) for i in range(10)],
-            "col2": np.random.randint(0, 100, (10,)),
-        }
+        {"col1": [str(i) for i in range(10)], "col2": np.random.randint(0, 100, (10,)),}
     )
     pd_object_ref = ray.put(pd_value)
     np_value = np.asarray([1, 3, 6, 2, 4])

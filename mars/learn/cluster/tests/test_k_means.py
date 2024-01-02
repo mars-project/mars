@@ -487,10 +487,7 @@ def test_k_means_function(setup):
     # check warning when centers are passed
     with pytest.warns(RuntimeWarning):
         k_means(
-            X,
-            n_clusters=n_clusters,
-            sample_weight=None,
-            init=centers,
+            X, n_clusters=n_clusters, sample_weight=None, init=centers,
         )
 
     # to many clusters desired

@@ -412,10 +412,7 @@ def test_gpu_execution(setup_gpu):
     pd.testing.assert_frame_equal(result.to_pandas(), expected)
 
     # test Series.sort_index
-    raw = pd.Series(
-        np.random.rand(10),
-        index=np.random.rand(10),
-    )
+    raw = pd.Series(np.random.rand(10), index=np.random.rand(10),)
     series = Series(raw).to_gpu()
 
     result = series.sort_index().execute().fetch()

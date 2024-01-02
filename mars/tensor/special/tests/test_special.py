@@ -99,11 +99,7 @@ def test_unary_operand_no_out(func, tensor_cls):
 
 @pytest.mark.parametrize(
     "func,tensor_cls",
-    [
-        ("erfc", TensorErfc),
-        ("erfcx", TensorErfcx),
-        ("erfi", TensorErfi),
-    ],
+    [("erfc", TensorErfc), ("erfcx", TensorErfcx), ("erfi", TensorErfi),],
 )
 def test_unary_operand_out(func, tensor_cls):
     sp_func = getattr(spsecial, func)

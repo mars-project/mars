@@ -38,10 +38,7 @@ FAULT_INJECTION_CONFIG = {
     "third_party_modules": ["mars.services.tests.fault_injection_patch"],
 }
 SUBTASK_RERUN_CONFIG = {
-    "scheduling": {
-        "subtask_max_retries": 2,
-        "subtask_max_reschedules": 2,
-    }
+    "scheduling": {"subtask_max_retries": 2, "subtask_max_reschedules": 2,}
 }
 
 
@@ -52,10 +49,7 @@ async def fault_cluster(request):
     ray_config.update(FAULT_INJECTION_CONFIG)
     ray_config.update(param.get("config", {}))
     client = await new_cluster(
-        worker_num=2,
-        worker_cpu=2,
-        worker_mem=1 * 1024**3,
-        config=ray_config,
+        worker_num=2, worker_cpu=2, worker_mem=1 * 1024 ** 3, config=ray_config,
     )
     async with client:
         yield client

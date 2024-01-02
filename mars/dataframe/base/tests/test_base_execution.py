@@ -330,7 +330,7 @@ def test_describe_execution(setup):
 
 def test_data_frame_apply_execute(setup):
     cols = [chr(ord("A") + i) for i in range(10)]
-    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
 
     old_chunk_store_limit = options.chunk_store_limit
     try:
@@ -407,11 +407,11 @@ def test_data_frame_apply_execute(setup):
 
 def test_data_frame_apply_closure_execute(setup):
     cols = [chr(ord("A") + i) for i in range(10)]
-    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
     df = from_pandas_df(df_raw, chunk_size=5)
 
-    x = pd.Series([i for i in range(10**4)])
-    y = pd.Series([i for i in range(10**4)])
+    x = pd.Series([i for i in range(10 ** 4)])
+    y = pd.Series([i for i in range(10 ** 4)])
 
     def closure(z):
         return pd.concat([x, y], ignore_index=True)
@@ -425,15 +425,15 @@ def test_data_frame_apply_closure_execute(setup):
 @pytest.mark.parametrize("multiplier", [1, 3, 4])
 def test_data_frame_apply_callable_execute(setup, multiplier):
     cols = [chr(ord("A") + i) for i in range(10)]
-    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
     df = from_pandas_df(df_raw, chunk_size=5)
 
     class callable_df:
         __slots__ = "x", "__dict__"
 
         def __init__(self, multiplier: int = 1):
-            self.x = pd.Series([i for i in range(10**multiplier)])
-            self.y = pd.Series([i for i in range(10**multiplier)])
+            self.x = pd.Series([i for i in range(10 ** multiplier)])
+            self.y = pd.Series([i for i in range(10 ** multiplier)])
 
         def __call__(self, pdf):
             return pd.concat([self.x, self.y], ignore_index=True)
@@ -447,7 +447,7 @@ def test_data_frame_apply_callable_execute(setup, multiplier):
 
 def test_series_apply_execute(setup):
     idxes = [chr(ord("A") + i) for i in range(20)]
-    s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
+    s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
 
     series = from_pandas_series(s_raw, chunk_size=5)
 
@@ -488,7 +488,7 @@ def test_series_apply_execute(setup):
 
 def test_series_apply_closure_execute(setup):
     idxes = [chr(ord("A") + i) for i in range(20)]
-    s_raw = pd.Series([i**2 for i in range(20)], index=idxes)
+    s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
 
     series = from_pandas_series(s_raw, chunk_size=5)
 
@@ -542,10 +542,10 @@ def test_apply_with_arrow_dtype_execution(setup):
 
 def test_transform_execute(setup):
     cols = [chr(ord("A") + i) for i in range(10)]
-    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
 
     idx_vals = [chr(ord("A") + i) for i in range(20)]
-    s_raw = pd.Series([i**2 for i in range(20)], index=idx_vals)
+    s_raw = pd.Series([i ** 2 for i in range(20)], index=idx_vals)
 
     def rename_fn(f, new_name):
         f.__name__ = new_name
@@ -588,11 +588,7 @@ def test_transform_execute(setup):
         pd.testing.assert_frame_equal(result, expected)
 
         fn_dict = OrderedDict(
-            [
-                ("A", "cumsum"),
-                ("D", ["cumsum", "cummax"]),
-                ("F", lambda x: x + 1),
-            ]
+            [("A", "cumsum"), ("D", ["cumsum", "cummax"]), ("F", lambda x: x + 1),]
         )
         r = df.transform(fn_dict)
         result = r.execute().fetch()
@@ -2056,19 +2052,18 @@ def test_map_chunk_with_df_or_series_output(setup):
     assert not ("dtype" in res.data_params)
     assert res.shape == (4, 2)
     pd.testing.assert_frame_equal(
-        res.fetch(),
-        raw.iloc[[0, 2, 5, 7], :2],
+        res.fetch(), raw.iloc[[0, 2, 5, 7], :2],
     )
 
 
 def test_map_chunk_closure_execute(setup):
     raw = pd.DataFrame(
-        np.random.randint(10**3, size=(10, 5)), columns=[f"col{i}" for i in range(5)]
+        np.random.randint(10 ** 3, size=(10, 5)), columns=[f"col{i}" for i in range(5)]
     )
 
     df = from_pandas_df(raw, chunk_size=5)
     num = 1
-    dic = {i: -i for i in range(10**3)}
+    dic = {i: -i for i in range(10 ** 3)}
 
     def f1(pdf):
         return pdf + num
@@ -2093,7 +2088,7 @@ def test_map_chunk_closure_execute(setup):
 
     class callable_df:
         def __init__(self, multiplier: int = 1):
-            self.dic = {i: -i for i in range(10**multiplier)}
+            self.dic = {i: -i for i in range(10 ** multiplier)}
 
         def __call__(self, pdf):
             ret = pd.DataFrame(columns=["col1", "col2"])

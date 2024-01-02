@@ -224,8 +224,7 @@ def test_series_from_tensor(setup):
 
     series = md.Series(mt.ones((10,), chunk_size=4))
     pd.testing.assert_series_equal(
-        series.execute().fetch(),
-        pd.Series(np.ones(10)),
+        series.execute().fetch(), pd.Series(np.ones(10)),
     )
 
     index_data = np.random.rand(10)
@@ -1284,8 +1283,7 @@ def test_read_raydataset(ray_start_regular, ray_create_mars_cluster):
     ds3 = ray.data.from_arrow([pa.Table.from_pandas(pdf2) for _ in range(3)])
     df3 = md.read_ray_dataset(ds3)
     pd.testing.assert_frame_equal(
-        df3.head(5).to_pandas(),
-        pdf2,
+        df3.head(5).to_pandas(), pdf2,
     )
 
 

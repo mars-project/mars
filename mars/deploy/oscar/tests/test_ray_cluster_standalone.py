@@ -43,11 +43,7 @@ def test_new_cluster_in_ray(stop_ray):
 
 @require_ray
 @pytest.mark.parametrize(
-    "backend",
-    [
-        "mars",
-        "ray",
-    ],
+    "backend", ["mars", "ray",],
 )
 def test_new_ray_session(stop_ray, backend):
     new_ray_session_test(backend)
@@ -55,7 +51,7 @@ def test_new_ray_session(stop_ray, backend):
 
 def new_ray_session_test(backend):
     session = new_ray_session(
-        session_id="abc", worker_num=2, worker_mem=512 * 1024**2, backend=backend
+        session_id="abc", worker_num=2, worker_mem=512 * 1024 ** 2, backend=backend
     )
     mt.random.RandomState(0).rand(100, 5).sum().execute()
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
@@ -64,7 +60,7 @@ def new_ray_session_test(backend):
         session_id="abcd",
         worker_num=2,
         default=True,
-        worker_mem=512 * 1024**2,
+        worker_mem=512 * 1024 ** 2,
         backend=backend,
     )
     session.execute(mt.random.RandomState(0).rand(100, 5).sum())
@@ -106,10 +102,10 @@ async def test_optional_supervisor_node(ray_start_regular, test_option):
     config["cluster"]["ray"]["supervisor"]["sub_pool_num"] = supervisor_sub_pool_num
     client = await new_cluster(
         "test_cluster",
-        supervisor_mem=1 * 1024**3,
+        supervisor_mem=1 * 1024 ** 3,
         worker_num=2,
         worker_cpu=2,
-        worker_mem=1 * 1024**3,
+        worker_mem=1 * 1024 ** 3,
         config=config,
     )
     async with client:

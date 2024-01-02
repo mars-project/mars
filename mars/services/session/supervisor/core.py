@@ -169,9 +169,7 @@ class SessionActor(mo.Actor):
             uid=CustomLogMetaActor.gen_uid(self._session_id),
         )
         logger.debug(
-            "Session %s actor created on pid: %s",
-            self._session_id,
-            os.getpid(),
+            "Session %s actor created on pid: %s", self._session_id, os.getpid(),
         )
 
     async def remove(self):

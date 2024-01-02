@@ -140,10 +140,7 @@ else:
         else:
             if any(
                 meta is not None
-                for meta in [
-                    sample_weight_eval_set,
-                    base_margin_eval_set,
-                ]
+                for meta in [sample_weight_eval_set, base_margin_eval_set,]
             ):
                 raise ValueError(
                     "`eval_set` is not set but one of the other evaluation meta info is "

@@ -78,10 +78,8 @@ class FaultInjectionSubtaskProcessor(SubtaskProcessor):
                 ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME
             )
             if fault_injection_manager_name is not None:
-                self._fault_injection_manager_ref = (
-                    await self._session_api.get_remote_object(
-                        self._session_id, fault_injection_manager_name
-                    )
+                self._fault_injection_manager_ref = await self._session_api.get_remote_object(
+                    self._session_id, fault_injection_manager_name
                 )
         return await super().run()
 

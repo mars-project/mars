@@ -783,7 +783,7 @@ class _BatchedFetcher:
         else:
             # if batch_size is not specified, use first batch to estimate
             # batch_size.
-            default_batch_bytes = 50 * 1024**2
+            default_batch_bytes = 50 * 1024 ** 2
             first_batch = 1000
             size = self.shape[0]
 
@@ -3116,19 +3116,12 @@ class DataFrameOrSeriesData(HasShapeTileableData, _ToPandasMixin):
     _data_params = DictField("data_params")
 
     def __init__(
-        self,
-        op=None,
-        chunks=None,
-        data_type=None,
-        data_params=None,
-        **kw,
+        self, op=None, chunks=None, data_type=None, data_params=None, **kw,
     ):
         self._data_type = data_type
         self._data_params = data_params or dict()
         super().__init__(
-            _op=op,
-            _chunks=chunks,
-            **kw,
+            _op=op, _chunks=chunks, **kw,
         )
 
     def __getattr__(self, item):

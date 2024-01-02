@@ -314,11 +314,7 @@ class TaskProcessorActor(mo.Actor, _TaskInfoProcessorMixin):
             address=self.address,
             tile_context=task_preprocessor.tile_context,
         )
-        processor = self._task_processor_cls(
-            task,
-            task_preprocessor,
-            task_executor,
-        )
+        processor = self._task_processor_cls(task, task_preprocessor, task_executor,)
         self._task_id_to_processor[task.task_id] = processor
 
         # tell self to start running

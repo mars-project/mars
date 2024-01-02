@@ -127,13 +127,13 @@ def test_mars_backend_clean_up_and_restore_func(setup):
     sess = new_test_session(default=True, config=config)
 
     cols = [chr(ord("A") + i) for i in range(10)]
-    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
     df = md.DataFrame(df_raw, chunk_size=5)
 
     x_small = pd.Series([i for i in range(10)])
     y_small = pd.Series([i for i in range(10)])
-    x_large = pd.Series([i for i in range(10**4)])
-    y_large = pd.Series([i for i in range(10**4)])
+    x_large = pd.Series([i for i in range(10 ** 4)])
+    y_large = pd.Series([i for i in range(10 ** 4)])
 
     def closure_small(z):
         return pd.concat([x_small, y_small], ignore_index=True)
@@ -162,15 +162,15 @@ def test_clean_up_and_restore_callable(setup, multiplier):
     sess = new_test_session(default=True, config=config)
 
     cols = [chr(ord("A") + i) for i in range(10)]
-    df_raw = pd.DataFrame(dict((c, [i**2 for i in range(20)]) for c in cols))
+    df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
     df = md.DataFrame(df_raw, chunk_size=5)
 
     class callable_df:
         __slots__ = "x", "__dict__"
 
         def __init__(self, multiplier: int = 1):
-            self.x = pd.Series([i for i in range(10**multiplier)])
-            self.y = pd.Series([i for i in range(10**multiplier)])
+            self.x = pd.Series([i for i in range(10 ** multiplier)])
+            self.y = pd.Series([i for i in range(10 ** multiplier)])
 
         def __call__(self, pdf):
             return pd.concat([self.x, self.y], ignore_index=True)

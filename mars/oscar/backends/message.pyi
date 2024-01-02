@@ -46,7 +46,6 @@ class _MessageBase:
     message_id: bytes
     message_trace: list
     profiling_context: Any
-
     def __init__(
         self,
         message_id: bytes = None,
@@ -62,7 +61,6 @@ class ControlMessage(_MessageBase):
     address: str
     control_message_type: ControlMessageType
     content: Any
-
     def __init__(
         self,
         message_id: bytes = None,
@@ -77,7 +75,6 @@ class ResultMessage(_MessageBase):
     message_type = MessageType.result
 
     result: Any
-
     def __init__(
         self,
         message_id: bytes = None,
@@ -95,7 +92,6 @@ class ErrorMessage(_MessageBase):
     error_type: Type
     error: BaseException
     traceback: TracebackType
-
     def __init__(
         self,
         message_id: bytes = None,
@@ -118,7 +114,6 @@ class CreateActorMessage(_MessageBase):
     kwargs: dict
     allocate_strategy: Any
     from_main: bool
-
     def __init__(
         self,
         message_id: bytes = None,
@@ -137,7 +132,6 @@ class DestroyActorMessage(_MessageBase):
 
     actor_ref: ActorRef
     from_main: bool
-
     def __init__(
         self,
         message_id: bytes = None,
@@ -151,7 +145,6 @@ class HasActorMessage(_MessageBase):
     message_type = MessageType.has_actor
 
     actor_ref: ActorRef
-
     def __init__(
         self,
         message_id: bytes = None,
@@ -164,7 +157,6 @@ class ActorRefMessage(_MessageBase):
     message_type = MessageType.actor_ref
 
     actor_ref: ActorRef
-
     def __init__(
         self,
         message_id: bytes = None,
@@ -178,7 +170,6 @@ class SendMessage(_MessageBase):
 
     actor_ref: ActorRef
     content: Any
-
     def __init__(
         self,
         message_id: bytes = None,
@@ -197,7 +188,6 @@ class CancelMessage(_MessageBase):
 
     address: str
     cancel_message_id: bytes
-
     def __init__(
         self,
         message_id: bytes = None,

@@ -156,9 +156,7 @@ class ColumnPruningRule(OptimizationRule):
                         continue
 
                     # new node init
-                    new_node_op = DataFrameIndex(
-                        col_names=pruned_columns,
-                    )
+                    new_node_op = DataFrameIndex(col_names=pruned_columns,)
                     new_params = predecessor.params.copy()
                     new_params["shape"] = (
                         new_params["shape"][0],

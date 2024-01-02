@@ -139,14 +139,9 @@ async def test_meta_web_api():
     async with pool:
         config = {
             "services": ["cluster", "session", "meta", "web"],
-            "cluster": {
-                "backend": "fixed",
-                "lookup_address": pool.external_address,
-            },
+            "cluster": {"backend": "fixed", "lookup_address": pool.external_address,},
             "meta": {"store": "dict"},
-            "web": {
-                "port": web_port,
-            },
+            "web": {"port": web_port,},
         }
         await start_services(NodeRole.SUPERVISOR, config, address=pool.external_address)
 

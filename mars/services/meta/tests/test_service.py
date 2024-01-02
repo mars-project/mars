@@ -29,10 +29,7 @@ async def test_meta_service():
     async with pool, worker_pool:
         config = {
             "services": ["cluster", "session", "meta"],
-            "cluster": {
-                "backend": "fixed",
-                "lookup_address": pool.external_address,
-            },
+            "cluster": {"backend": "fixed", "lookup_address": pool.external_address,},
             "meta": {"store": "dict"},
         }
         await start_services(NodeRole.SUPERVISOR, config, address=pool.external_address)

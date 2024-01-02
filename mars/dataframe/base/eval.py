@@ -331,10 +331,7 @@ class DataFrameEval(DataFrameOperand, DataFrameOperandMixin):
         else:
             name, dtype = dtypes
             params = dict(
-                name=name,
-                dtype=dtype,
-                shape=shape,
-                index_value=new_index_value,
+                name=name, dtype=dtype, shape=shape, index_value=new_index_value,
             )
         return self.new_tileable([df], **params)
 
@@ -388,12 +385,7 @@ class DataFrameEval(DataFrameOperand, DataFrameOperandMixin):
         if out_df.ndim == 1:
             new_nsplits = new_nsplits[:1]
 
-        params.update(
-            dict(
-                chunks=chunks,
-                nsplits=tuple(new_nsplits),
-            )
-        )
+        params.update(dict(chunks=chunks, nsplits=tuple(new_nsplits),))
         return new_op.new_tileables([in_df], **params)
 
     @classmethod

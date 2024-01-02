@@ -61,9 +61,7 @@ async def test_storage_service(actor_pools):
 
     config = {
         "services": ["storage"],
-        "storage": {
-            "backends": ["shared_memory"],
-        },
+        "storage": {"backends": ["shared_memory"],},
     }
 
     await start_services(NodeRole.WORKER, config, address=worker_pool.external_address)

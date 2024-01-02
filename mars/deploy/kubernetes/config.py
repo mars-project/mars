@@ -134,12 +134,7 @@ class NamespaceConfig(KubeConfig):
     def build(self):
         return {
             "kind": "Namespace",
-            "metadata": {
-                "name": self._name,
-                "labels": {
-                    "name": self._name,
-                },
-            },
+            "metadata": {"name": self._name, "labels": {"name": self._name,},},
         }
 
 
@@ -163,9 +158,7 @@ class ServiceConfig(KubeConfig):
             "kind": "Service",
             "metadata": {
                 "name": self._name,
-                "labels": {
-                    "mars/service-name": self._name,
-                },
+                "labels": {"mars/service-name": self._name,},
             },
             "spec": _remove_nones(
                 {
@@ -426,9 +419,7 @@ class ReplicationConfig(KubeConfig):
         }
         lifecycle_dict = _remove_nones(
             {
-                "preStop": {
-                    "exec": {"command": self._pre_stop_command},
-                }
+                "preStop": {"exec": {"command": self._pre_stop_command},}
                 if self._pre_stop_command
                 else None,
             }
@@ -463,15 +454,11 @@ class ReplicationConfig(KubeConfig):
     def build(self):
         return {
             "kind": self._kind,
-            "metadata": {
-                "name": self._name,
-            },
+            "metadata": {"name": self._name,},
             "spec": {
                 "replicas": int(self._replicas),
                 "template": {
-                    "metadata": {
-                        "labels": _remove_nones(self._labels) or None,
-                    },
+                    "metadata": {"labels": _remove_nones(self._labels) or None,},
                     "spec": self.build_template_spec(),
                 },
             },

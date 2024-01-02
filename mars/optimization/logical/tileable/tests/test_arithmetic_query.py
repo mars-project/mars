@@ -169,11 +169,7 @@ def test_eval_setitem_to_eval(setup):
     records = optimize(graph)
     opt_df3 = records.get_optimization_result(df3.data)
     assert opt_df3.op.expr == "\n".join(
-        [
-            "`K` = (`A`) * ((1) - (`B`))",
-            "`L` = (`K`) - (`A`)",
-            "`M` = (`K`) + (`L`)",
-        ]
+        ["`K` = (`A`) * ((1) - (`B`))", "`L` = (`K`) - (`A`)", "`M` = (`K`) + (`L`)",]
     )
     assert len(graph) == 4
     assert len([n for n in graph if isinstance(n.op, DataFrameEval)]) == 1

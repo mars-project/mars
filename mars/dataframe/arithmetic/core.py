@@ -214,9 +214,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             if chunk.ndim == 2:
                 if lazy_chunk_meta:
                     out_chunk = out_op.new_chunk(
-                        [chunk],
-                        shape=chunk.shape,
-                        index=chunk.index,
+                        [chunk], shape=chunk.shape, index=chunk.index,
                     )
                     out_chunk._set_tileable_meta(
                         tileable_key=df.key,

@@ -24,11 +24,7 @@ r2_score = make_scorer(r2_score)
 neg_log_loss_scorer = make_scorer(log_loss, greater_is_better=False, needs_proba=True)
 
 
-SCORERS = dict(
-    r2=r2_score,
-    accuracy=accuracy_score,
-    neg_log_loss=neg_log_loss_scorer,
-)
+SCORERS = dict(r2=r2_score, accuracy=accuracy_score, neg_log_loss=neg_log_loss_scorer,)
 
 
 def get_scorer(score_func: Union[str, Callable], **kwargs) -> Callable:

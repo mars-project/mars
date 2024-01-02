@@ -75,12 +75,10 @@ submitted_subtask_number = Metrics.counter(
     ("session_id", "task_id", "stage_id"),
 )
 started_subtask_number = Metrics.counter(
-    "mars.ray_dag.started_subtask_number",
-    "The number of started subtask.",
+    "mars.ray_dag.started_subtask_number", "The number of started subtask.",
 )
 completed_subtask_number = Metrics.counter(
-    "mars.ray_dag.completed_subtask_number",
-    "The number of completed subtask.",
+    "mars.ray_dag.completed_subtask_number", "The number of completed subtask.",
 )
 
 
@@ -125,9 +123,7 @@ class _SubtaskGC:
     """GC the inputs of subtask chunk."""
 
     def __init__(
-        self,
-        subtask_chunk_graph: ChunkGraph,
-        context: RayExecutionWorkerContext,
+        self, subtask_chunk_graph: ChunkGraph, context: RayExecutionWorkerContext,
     ):
         self._subtask_chunk_graph = subtask_chunk_graph
         self._context = context
@@ -457,9 +453,7 @@ class RayTaskExecutor(TaskExecutor):
         meta_api: MetaAPI,
     ):
         logger.info(
-            "Start task %s with GC method %s.",
-            task.task_id,
-            config.get_gc_method(),
+            "Start task %s with GC method %s.", task.task_id, config.get_gc_method(),
         )
         self._config = config
         self._task = task

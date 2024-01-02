@@ -36,6 +36,7 @@ try:
             if os.name != "nt" and fd >= 0:
                 os.close(fd)
 
+
 except ImportError:  # pragma: no cover
     # allow shared_memory package to be absent
     SharedMemory = SharedMemoryForRead = None

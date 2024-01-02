@@ -919,8 +919,7 @@ def test_dataframe_aggregate(setup, check_ref_counts):
 
     result = df.agg({0: [sum, min, max]})
     pd.testing.assert_frame_equal(
-        result.execute().fetch(),
-        data.agg({0: [sum, min, max]}),
+        result.execute().fetch(), data.agg({0: [sum, min, max]}),
     )
 
     if _support_kw_agg:
@@ -1015,7 +1014,7 @@ class MockReduction1(CustomReduction):
 
 class MockReduction2(CustomReduction):
     def pre(self, value):
-        return value + 1, value**2
+        return value + 1, value ** 2
 
     def agg(self, v1, v2):
         return v1.sum(), v2.prod()

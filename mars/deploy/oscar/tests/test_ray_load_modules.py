@@ -44,10 +44,10 @@ async def create_cluster(request):
     ray_config = _load_config(CONFIG_FILE)
     ray_config.update(param.get("config", {}))
     client = await new_cluster(
-        supervisor_mem=1 * 1024**3,
+        supervisor_mem=1 * 1024 ** 3,
         worker_num=2,
         worker_cpu=2,
-        worker_mem=1 * 1024**3,
+        worker_mem=1 * 1024 ** 3,
         config=ray_config,
     )
     async with client:
@@ -77,10 +77,7 @@ async def test_load_third_party_modules(ray_start_regular, config_exception):
     config["third_party_modules"] = third_party_modules_config
     with expected_exception:
         await new_cluster(
-            worker_num=1,
-            worker_cpu=1,
-            worker_mem=1 * 1024**3,
-            config=config,
+            worker_num=1, worker_cpu=1, worker_mem=1 * 1024 ** 3, config=config,
         )
 
 
@@ -121,10 +118,10 @@ async def test_load_third_party_modules_from_config(
     ray_start_regular, cleanup_third_party_modules_output  # noqa: F811
 ):
     client = await new_cluster(
-        supervisor_mem=1 * 1024**3,
+        supervisor_mem=1 * 1024 ** 3,
         worker_num=1,
         worker_cpu=1,
-        worker_mem=1 * 1024**3,
+        worker_mem=1 * 1024 ** 3,
         config=CONFIG_THIRD_PARTY_MODULES_TEST_FILE,
     )
     async with client:

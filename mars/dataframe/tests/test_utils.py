@@ -562,10 +562,7 @@ def test_make_dtypes():
 
 @pytest.mark.parametrize(
     "columns",
-    [
-        pd.RangeIndex(8),
-        pd.MultiIndex.from_product([list("AB"), list("CDEF")]),
-    ],
+    [pd.RangeIndex(8), pd.MultiIndex.from_product([list("AB"), list("CDEF")]),],
 )
 def test_build_concatenated_rows_frame(setup, columns):
     df = pd.DataFrame(np.random.rand(16, 8), columns=columns)
@@ -649,7 +646,7 @@ def test_auto_merge_chunks():
 
 @pytest.mark.parametrize("multiplier_and_expected", [(1, False), (3, True), (4, True)])
 def test_whether_to_clean_up(multiplier_and_expected):
-    threshold = 10**4
+    threshold = 10 ** 4
     multiplier, expected = multiplier_and_expected
 
     class FakeOperandwithClosure:
@@ -676,9 +673,9 @@ def test_whether_to_clean_up(multiplier_and_expected):
                     bytearray("This is a byte array.", "utf-8"),
                 ],
             ]
-            self.dic = {"one": pd.Series([i for i in range(10**multiplier)])}
+            self.dic = {"one": pd.Series([i for i in range(10 ** multiplier)])}
             self.df = pd.DataFrame(self.dic)
-            self.ds = pd.Series([i for i in range(10**multiplier)])
+            self.ds = pd.Series([i for i in range(10 ** multiplier)])
 
         def __call__(self, z):
             pass

@@ -51,10 +51,7 @@ X_sparse = mt.tensor(x_sparse, chunk_size=chunk_size).tosparse(missing=np.nan)[f
 async def create_cluster():
     start_method = os.environ.get("POOL_START_METHOD", None)
     client = await new_cluster(
-        subprocess_start_method=start_method,
-        n_worker=2,
-        n_cpu=4,
-        use_uvloop=False,
+        subprocess_start_method=start_method, n_worker=2, n_cpu=4, use_uvloop=False,
     )
     async with client:
         yield client

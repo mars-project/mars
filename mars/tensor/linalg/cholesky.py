@@ -72,19 +72,13 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
                     lower_chunk = TensorZeros(
                         dtype=tensor.dtype, shape=lower_shape, order=tensor.order.value
                     ).new_chunk(
-                        None,
-                        shape=lower_shape,
-                        index=(i, j),
-                        order=tensor.order,
+                        None, shape=lower_shape, index=(i, j), order=tensor.order,
                     )
                     upper_shape = (in_tensor.nsplits[1][j], in_tensor.nsplits[0][i])
                     upper_chunk = TensorZeros(
                         dtype=tensor.dtype, shape=upper_shape, order=tensor.order.value
                     ).new_chunk(
-                        None,
-                        shape=upper_shape,
-                        index=(j, i),
-                        order=tensor.order,
+                        None, shape=upper_shape, index=(j, i), order=tensor.order,
                     )
                     lower_chunks[lower_chunk.index] = lower_chunk
                     upper_chunks[upper_chunk.index] = upper_chunk

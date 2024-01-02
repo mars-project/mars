@@ -1450,7 +1450,7 @@ def auto_merge_chunks(
 # removed or refactored in the future to calculate func size
 # with more accuracy as well as address some serialization issues.
 def clean_up_func(op):
-    threshold = int(os.getenv("MARS_CLOSURE_CLEAN_UP_BYTES_THRESHOLD", 10**4))
+    threshold = int(os.getenv("MARS_CLOSURE_CLEAN_UP_BYTES_THRESHOLD", 10 ** 4))
     if threshold == -1:  # pragma: no cover
         return
     ctx = get_context()

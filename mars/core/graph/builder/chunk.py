@@ -250,9 +250,7 @@ class Tiler:
                 self._add_nodes(chunk_graph, chunks, visited, tileable)
 
     def _gen_result_chunks(
-        self,
-        chunk_graph: ChunkGraph,
-        next_tileable_handlers: List[_TileableHandler],
+        self, chunk_graph: ChunkGraph, next_tileable_handlers: List[_TileableHandler],
     ):
         result_chunks = chunk_graph.result_chunks
         tileable_graph = self._tileable_graph

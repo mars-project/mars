@@ -66,9 +66,7 @@ def test_blockwise_voting_classifier_hard(setup, fit_X, fit_y, predict_X, predic
 )
 def test_blockwise_voting_classifier_soft(setup, fit_X, fit_y, predict_X, predict_y):
     clf = BlockwiseVotingClassifier(
-        LogisticRegression(solver="lbfgs"),
-        voting="soft",
-        classes=[0, 1],
+        LogisticRegression(solver="lbfgs"), voting="soft", classes=[0, 1],
     )
     clf.fit(fit_X, fit_y)
     estimators = clf.estimators_.fetch()

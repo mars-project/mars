@@ -116,8 +116,7 @@ class SubtaskRunnerActor(mo.Actor):
                 # when recovering actor pools, the actor created in sub pools
                 # may be recovered already
                 self._session_id_to_processors[session_id] = await mo.actor_ref(
-                    uid=SubtaskProcessorActor.gen_uid(session_id),
-                    address=self.address,
+                    uid=SubtaskProcessorActor.gen_uid(session_id), address=self.address,
                 )
         processor = self._session_id_to_processors[session_id]
         try:

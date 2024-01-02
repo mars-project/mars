@@ -152,14 +152,7 @@ class ClusterWebAPIHandler(MarsServiceWebAPIHandler):
         cluster_api = await self._get_cluster_api()
         address = self.get_argument("address", "") or None
         stacks = list(await cluster_api.get_node_thread_stacks(address))
-        self.write(
-            json.dumps(
-                {
-                    "generate_time": time.time(),
-                    "stacks": stacks,
-                }
-            )
-        )
+        self.write(json.dumps({"generate_time": time.time(), "stacks": stacks,}))
 
 
 web_handlers = {ClusterWebAPIHandler.get_root_pattern(): ClusterWebAPIHandler}

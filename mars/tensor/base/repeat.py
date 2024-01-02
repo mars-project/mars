@@ -133,7 +133,9 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
                 rp = repeats[start:stop]
                 size = int(rp.sum())
             elif not isinstance(repeats, Integral):
-                rp = repeats.cix[ax_idx,]
+                rp = repeats.cix[
+                    ax_idx,
+                ]
                 size = np.nan
             else:
                 rp = repeats
