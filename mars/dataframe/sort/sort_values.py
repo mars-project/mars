@@ -111,7 +111,13 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
     def __call__(self, a):
         assert self.axis == 0
         if self.ignore_index:
-            index_value = parse_index(pd.RangeIndex(a.shape[0]))
+            # Fix for the bug: handle NaN or unknown dimensions
+            if not isinstance(a.shape[0], int):
+                index_value = parse_index(
+                    pd.RangeIndex(-1)
+                )  # Handle unknown dimensions
+            else:
+                index_value = parse_index(pd.RangeIndex(a.shape[0]))
         else:
             if isinstance(a.index_value.value, IndexValue.RangeIndex):
                 index_value = parse_index(pd.Index([], dtype=np.int64))
